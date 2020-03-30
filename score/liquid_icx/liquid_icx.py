@@ -4,6 +4,7 @@ from .irc_2_interface import IRC2TokenStandard
 from .token_fallback_interface import TokenFallbackInterface
 
 
+
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @eventlog(indexed=3)
@@ -12,9 +13,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
-        self._total_supply = VarDB('balances', db, value_type=int)
-        self._decimals = VarDB('total_supply', db, value_type=int)
-        self._balances = DictDB('decimals', db, value_type=int)
+        self._total_supply = VarDB('total_supply', db, value_type=int)
+        self._decimals = VarDB('decimals', db, value_type=int)
+        self._balances = DictDB('balances', db, value_type=int)
+        # self._rewards = DictDB('rewards', db, value_type=int)
 
     def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
@@ -84,10 +86,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @payable
     def deposit(self):
+        # 0. Claim rewards
         # 1. Stake the ICX in message
         # 2. Vote with ICX
         # 3. Mint
-        pass
+        self._mint(self.msg.sender, self.msg.value)
 
     def _mint(self, _account: Address, _amount: int):
         if _account == ZERO_WALLET_ADDRESS:
