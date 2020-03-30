@@ -2,13 +2,9 @@ from iconservice import *
 from .irc_2_interface import IRC2TokenStandard
 from .token_fallback_interface import TokenFallbackInterface
 
-TAG = 'LiquidIcx'
+TAG = 'LiquidICX'
 
-class LiquidIcx(IconScoreBase, IRC2TokenStandard):
-
-    _BALANCES = 'balances'
-    _TOTAL_SUPPLY = 'total_supply'
-    _DECIMALS = 'decimals'
+class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @eventlog(indexed=3)
     def Transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
@@ -16,11 +12,11 @@ class LiquidIcx(IconScoreBase, IRC2TokenStandard):
 
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
-        self._total_supply = VarDB(self._TOTAL_SUPPLY, db, value_type=int)
-        self._decimals = VarDB(self._DECIMALS, db, value_type=int)
-        self._balances = DictDB(self._BALANCES, db, value_type=int)
+        self._total_supply = VarDB('balances', db, value_type=int)
+        self._decimals = VarDB('total_supply', db, value_type=int)
+        self._balances = DictDB('decimals', db, value_type=int)
 
-    def on_install(self, _initialSupply: int = 0, _decimals: int = 0) -> None:
+    def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
 
         if _initialSupply < 0:
@@ -41,11 +37,11 @@ class LiquidIcx(IconScoreBase, IRC2TokenStandard):
 
     @external(readonly=True)
     def name(self) -> str:
-        return "SampleToken"
+        return "LiquidICX"
 
     @external(readonly=True)
     def symbol(self) -> str:
-        return "ST"
+        return "LICX"
 
     @external(readonly=True)
     def decimals(self) -> int:
@@ -73,6 +69,7 @@ class LiquidIcx(IconScoreBase, IRC2TokenStandard):
         if self._balances[_from] < _value:
             revert("Out of balance")
 
+        # TODO implement safe math
         self._balances[_from] = self._balances[_from] - _value
         self._balances[_to] = self._balances[_to] + _value
 
