@@ -1,8 +1,8 @@
 from iconservice import *
+from .consts import *
 from .irc_2_interface import IRC2TokenStandard
 from .token_fallback_interface import TokenFallbackInterface
 
-TAG = 'LiquidICX'
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
@@ -69,7 +69,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._balances[_from] < _value:
             revert("Out of balance")
 
-        # TODO implement safe math
         self._balances[_from] = self._balances[_from] - _value
         self._balances[_to] = self._balances[_to] + _value
 
@@ -82,3 +81,30 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # Emits an event log `Transfer`
         self.Transfer(_from, _to, _value, _data)
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
+
+    @payable
+    def deposit(self):
+        # 1. Stake the ICX in message
+        # 2. Vote with ICX
+        # 3. Mint
+        pass
+
+    def _mint(self, _account: Address, _amount: int):
+        if _account == ZERO_WALLET_ADDRESS:
+            revert("LiquidICX: mint to the zero address")
+
+        self._balances[_account] += _amount
+        self._total_supply += _amount
+
+        self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
+
+    def _burn(self, _account: Address, _amount: int):
+        if _account == ZERO_WALLET_ADDRESS:
+            revert("LiquidICX: burn from the zero address")
+        if self._balances[_account] - _amount < 0:
+            revert("LiquidICX: burn amount exceeds balance")
+
+        self._balances[_account] -= _amount
+        self._total_supply -= _amount
+
+        self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')
