@@ -2,6 +2,7 @@ from iconservice import *
 
 TAG = 'FakeSystemContract'
 
+
 class FakeSystemContract(IconScoreBase):
 
     def __init__(self, db: IconScoreDatabase) -> None:
@@ -12,10 +13,10 @@ class FakeSystemContract(IconScoreBase):
     def on_install(self) -> None:
         super().on_install()
 
-
     def on_update(self) -> None:
         super().on_update()
-    
+
+    @external(readonly=False)
     @payable
     def setStake(self) -> str:
         if self.msg.value <= 0:
@@ -27,7 +28,7 @@ class FakeSystemContract(IconScoreBase):
     def setDelegation(self, params: str):
         self._delegation[self.msg.sender.__str__()] = params
 
-    @external
+    @external(readonly=False)
     def claimIScore(self):
         pass
 
@@ -39,14 +40,18 @@ class FakeSystemContract(IconScoreBase):
     def getDelegation(self, _account: Address) -> str:
         return self._delegation[_account.__str__()]
 
+    @external(readonly=True)
     def getTotalSupply(self) -> int:
         return 800460000
 
-    def getDelegationRate(self) -> int:
+    @external(readonly=True)
+    def getDelegationSupply(self) -> int:
         return 160092000
 
-    @external
-    def queryIScore(self):
+    @external(readonly=True)
+    def getDelegationRate(self) -> int:
+        return (self.getDelegationSupply() / self.getTotalSupply()) * 10 ** 18
+
+    @external(readonly=True)
+    def queryIScore(self) -> int:
         pass
-
-
