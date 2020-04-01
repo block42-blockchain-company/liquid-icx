@@ -86,10 +86,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @payable
     def deposit(self):
-        # 0. Claim rewards
         # 1. Stake the ICX in message
         # 2. Vote with ICX
         # 3. Mint
+        # system_contract = self.create_interface_score(FAKE_SYSTEM_CONTRACT_LOCAL, )
         self._mint(self.msg.sender, self.msg.value)
 
     def _mint(self, _account: Address, _amount: int):
