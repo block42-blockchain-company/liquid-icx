@@ -3,8 +3,6 @@ from .consts import *
 from .irc_2_interface import IRC2TokenStandard
 from .token_fallback_interface import TokenFallbackInterface
 
-
-
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @eventlog(indexed=3)
@@ -16,7 +14,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._total_supply = VarDB('total_supply', db, value_type=int)
         self._decimals = VarDB('decimals', db, value_type=int)
         self._balances = DictDB('balances', db, value_type=int)
-        # self._rewards = DictDB('rewards', db, value_type=int)
 
     def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
@@ -63,6 +60,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             _data = b'None'
         self._transfer(self.msg.sender, _to, _value, _data)
 
+
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
 
         # Checks the sending value and balance.
@@ -85,19 +83,27 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
 
     @payable
+    @external(readonly=False)
     def deposit(self):
         # 1. Stake the ICX in message
         # 2. Vote with ICX
         # 3. Mint
-        # system_contract = self.create_interface_score(FAKE_SYSTEM_CONTRACT_LOCAL, )
+        # TODO Deprected method, we should use create_interface_score
+        # https://icon-project.github.io/score-guide/classes.iconscorebase.html#iconservice.iconscore.icon_score_base.IconScoreBase.IconScoreBase.create_interface_score
+        self.call(FAKE_SYSTEM_CONTRACT_LOCAL, "setStake", {}, self.msg.value)
+        self.call(FAKE_SYSTEM_CONTRACT_LOCAL, "setDelegation", {"params": "block42"})
         self._mint(self.msg.sender, self.msg.value)
+
+    @external(readonly=False)
+    def withdraw(self):
+        pass
 
     def _mint(self, _account: Address, _amount: int):
         if _account == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: mint to the zero address")
 
-        self._balances[_account] += _amount
-        self._total_supply += _amount
+        self._balances[_account] = self._balances[_account] + _amount
+        self._total_supply = self._balances[_account] + _amount
 
         self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
 
@@ -107,7 +113,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._balances[_account] - _amount < 0:
             revert("LiquidICX: burn amount exceeds balance")
 
-        self._balances[_account] -= _amount
-        self._total_supply -= _amount
+        self._balances[_account] = self._balances[_account] - _amount
+        self._total_supply = self._balances[_account] - _amount
 
         self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')

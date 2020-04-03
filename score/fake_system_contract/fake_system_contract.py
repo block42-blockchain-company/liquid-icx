@@ -22,7 +22,7 @@ class FakeSystemContract(IconScoreBase):
         if self.msg.value <= 0:
             revert("FakeSystemContract: Failed to stake. Values is <= 0")
 
-        self._balances[self.msg.sender] += self.msg.value
+        self._stake[self.msg.sender] = self._stake[self.msg.sender] + self.msg.value
 
     @external(readonly=False)
     def setDelegation(self, params: str):

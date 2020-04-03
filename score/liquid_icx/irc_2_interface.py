@@ -25,3 +25,7 @@ class IRC2TokenStandard(ABC):
     @abstractmethod
     def transfer(self, _to: Address, _value: int, _data: bytes = None):
         pass
+
+    @abstractmethod
+    def deposit(self):
+        pass
