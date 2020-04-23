@@ -54,6 +54,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def balanceOf(self, _owner: Address) -> int:
         return self._balances[_owner]
 
+
+
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None):
         if _data is None:
@@ -103,7 +105,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: mint to the zero address")
 
         self._balances[_account] = self._balances[_account] + _amount
-        self._total_supply = self._balances[_account] + _amount
+        self._total_supply = self._total_supply + _amount
 
         self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
 
@@ -114,6 +116,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: burn amount exceeds balance")
 
         self._balances[_account] = self._balances[_account] - _amount
-        self._total_supply = self._balances[_account] - _amount
+        self._total_supply = self._total_supply - _amount
 
         self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')
