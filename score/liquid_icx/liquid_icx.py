@@ -1,9 +1,20 @@
 from iconservice import *
+
 from .consts import *
+from .Request import Request
 from .irc_2_interface import IRC2TokenStandard
 from .token_fallback_interface import TokenFallbackInterface
 
+
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
+
+    @eventlog(indexed=2)
+    def Debug(self, nextPrepTerm: int, blockHeight: int):
+        pass
+
+    @eventlog(indexed=2)
+    def Join(self, _from: Address, _value: int):
+        pass
 
     @eventlog(indexed=3)
     def Transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
@@ -14,6 +25,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._total_supply = VarDB('total_supply', db, value_type=int)
         self._decimals = VarDB('decimals', db, value_type=int)
         self._balances = DictDB('balances', db, value_type=int)
+
+        self._requests = ArrayDB("requests", db, value_type=Address)
 
     def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
@@ -54,17 +67,56 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def balanceOf(self, _owner: Address) -> int:
         return self._balances[_owner]
 
-
-
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None):
         if _data is None:
             _data = b'None'
         self._transfer(self.msg.sender, _to, _value, _data)
 
+    @payable
+    @external(readonly=False)
+    def join(self) -> None:
+        self._requestJoin()
+
+        # if iss_info["nextPrepTerm"] - iss_info["blockHeight"] < 100:
+        #    self._handleRequests()
+
+        self.Join(self.msg.sender, self.msg.value)
+
+    def _requestJoin(self):
+        if self.msg.value < 0:
+            revert("Joining value cannot be less than zero")
+
+        rq = Request(self.db, self.msg.sender)
+        if rq.address is '':
+            rq.value = self.msg.value
+            rq.address = self.msg.sender
+            self._requests.put(self.msg.sender)
+        else:
+            rq.value = rq.value + self.msg.value
+
+    def _handleRequests(self):
+        for it in self._requests:
+            rq = Request(self.db, it)
+            self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "setStake", {}, rq.value)
+            self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "setDelegation", {"params": "block42"})
+            self._mint(rq.value.address, rq.value)
+
+    @external(readonly=True)
+    def getRequests(self) -> list:
+        response = []
+        for rq in self._requests:
+            response.append(Request(self.db, rq).serialize())
+        return response
+
+    @external(readonly=False)
+    def clearRequests(self):
+        #Only dev method
+        for rq in self._requests:
+            Request(self.db, rq).delete()
+            self._requests.pop()
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
-
         # Checks the sending value and balance.
         if _value < 0:
             revert("Transferring value cannot be less than zero")
