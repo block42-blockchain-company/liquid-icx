@@ -3,10 +3,12 @@ import unittest
 import logging
 import pprint
 import json
+import logging
 
 from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.libs.in_memory_zip import gen_deploy_data_content
-from iconsdk.builder.transaction_builder import DeployTransactionBuilder, CallTransactionBuilder, Transaction
+from iconsdk.builder.transaction_builder import DeployTransactionBuilder, CallTransactionBuilder, Transaction, \
+    TransactionBuilder
 from iconsdk.exception import JSONRPCException
 from iconsdk.providers.http_provider import HTTPProvider
 from iconsdk.signed_transaction import SignedTransaction
@@ -16,7 +18,9 @@ from iconsdk.icon_service import IconService
 
 class LiquidICXTest(unittest.TestCase):
     FORCE_DEPLOY = False  # Change to True, if you want to deploy a new SCORE for testing
+
     SCORE_INSTALL_ADDRESS = f"cx{'0' * 40}"
+    GOV_SCORE_ADDRESS = "cx0000000000000000000000000000000000000001"
 
     LOCAL_NETWORK_TEST = False
 
@@ -38,7 +42,6 @@ class LiquidICXTest(unittest.TestCase):
             self._icon_service = IconService(HTTPProvider(self.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
             self._score_address = LiquidICXTest.YEUOIDO_SCORE_ADDRESS
 
-
         if LiquidICXTest.FORCE_DEPLOY:
             self._score_address = self._testDeploy()["scoreAddress"]
 
@@ -46,15 +49,52 @@ class LiquidICXTest(unittest.TestCase):
         pass
 
     def _getTXResult(self, tx_hash) -> dict:
+        logger = logging.getLogger('ICON-SDK-PYTHON')
+        logger.disabled = True
         while True:
             try:
-                return self._icon_service.get_transaction_result(tx_hash)
+                res = self._icon_service.get_transaction_result(tx_hash)
+                logger.disabled = False
+                return res
             except JSONRPCException as e:
                 if e.args[0]["message"] == "Pending transaction":
                     time.sleep(1)
 
-    def _estimateSteps(self, tx: Transaction, margin: int = 10000):
-        return self._icon_service.estimate_step(tx) + margin
+    def _estimateSteps(self, margin) -> int:
+        tx = self._buildTransaction(write=False, method="getStepCosts", to=LiquidICXTest.GOV_SCORE_ADDRESS, params={})
+        result = self._icon_service.call(tx)
+        return int(result["contractCall"], 16) + margin
+
+    def _buildTransaction(self, write=True, method=None, params=None, **kwargs):
+        if not isinstance(method, str) or not isinstance(params, dict):
+            raise ValueError("Method should be string, params dictionary.")
+
+        from_ = self._wallet.get_address() if "from" not in kwargs else kwargs["from"]
+        to_ = self._score_address if "to" not in kwargs else kwargs["to"]
+
+        if write:
+            margin = 150000 if "margin" not in kwargs else kwargs["margin"]
+            value = 0 if "value" not in kwargs else kwargs["value"]
+            steps = self._estimateSteps(margin)
+
+            tx = CallTransactionBuilder() \
+                .from_(from_) \
+                .to(to_) \
+                .value(value) \
+                .nid(3) \
+                .step_limit(steps) \
+                .nonce(100) \
+                .method(method) \
+                .params({}) \
+                .build()
+        else:
+            tx = CallBuilder() \
+                .to(to_) \
+                .method(method) \
+                .params(params) \
+                .build()
+
+        return tx
 
     def _testDeploy(self, deploy_address: str = SCORE_INSTALL_ADDRESS):
         score_content_bytes = gen_deploy_data_content("../")
@@ -69,11 +109,13 @@ class LiquidICXTest(unittest.TestCase):
             .content(score_content_bytes) \
             .build()
 
-        #estimated_steps = self._estimateSteps(transaction)
+        # estimated_steps = self._estimateSteps(transaction)
         signed_transaction = SignedTransaction(transaction, self._wallet)
 
         tx_hash = self._icon_service.send_transaction(signed_transaction)
         tx_result = self._getTXResult(tx_hash)
+
+        LiquidICXTest.pp.pprint(tx_result)
 
         self.assertEqual(True, tx_result["status"])
         self.assertTrue('scoreAddress' in tx_result)
@@ -111,34 +153,18 @@ class LiquidICXTest(unittest.TestCase):
             self.assertTrue("Transfer(Address,Address,int,bytes)" == event_name or
                             "ICXTransfer(Address,Address,int)" == event_name)
 
-
     def testJoin(self):
-        transaction = CallTransactionBuilder() \
-            .from_(self._wallet.get_address()) \
-            .to(self._score_address) \
-            .value(1) \
-            .nid(3) \
-            .nonce(100) \
-            .step_limit(100000000) \
-            .method("join") \
-            .params({}) \
-            .build()
-
-        # step_limit = self._estimateSteps(transaction)
-        signed_transaction = SignedTransaction(transaction, self._wallet)
-
+        tx = self._buildTransaction(method="join", params={}, value=1)
+        signed_transaction = SignedTransaction(tx, self._wallet)
         tx_hash = self._icon_service.send_transaction(signed_transaction)
         tx_result = self._getTXResult(tx_hash)
-        LiquidICXTest.pp.pprint(tx_result)
+
+        self.assertEqual(True, tx_result["status"])
+        #LiquidICXTest.pp.pprint(tx_result)
 
     def testGetRequests(self):
-        call = CallBuilder() \
-            .to(self._score_address) \
-            .method("getRequests") \
-            .params({}) \
-            .build()
-
-        result = self._icon_service.call(call)
+        tx = self._buildTransaction(write=False, method="getRequests", params={})
+        result = self._icon_service.call(tx)
         LiquidICXTest.pp.pprint(result)
 
     def testGetRequest(self):
@@ -152,7 +178,6 @@ class LiquidICXTest(unittest.TestCase):
         result = self._icon_service.call(call)
         LiquidICXTest.pp.pprint(result)
 
-
     def testClear(self):
         transaction = CallTransactionBuilder() \
             .from_(self._wallet.get_address()) \
@@ -164,28 +189,24 @@ class LiquidICXTest(unittest.TestCase):
             .params({}) \
             .build()
 
-        # step_limit = self._estimateSteps(transaction)
         signed_transaction = SignedTransaction(transaction, self._wallet)
 
         tx_hash = self._icon_service.send_transaction(signed_transaction)
         tx_result = self._getTXResult(tx_hash)
         LiquidICXTest.pp.pprint(tx_result)
 
-
     def testgetPrepTerm(self):
-
-        call = CallBuilder() \
-            .from_(self._wallet.get_address()) \
-            .to(LiquidICXTest.SCORE_INSTALL_ADDRESS) \
-            .method("getIISSInfo") \
-            .params({}) \
-            .build()
-
+        call = self._buildTransaction(write=False,
+                                      to=LiquidICXTest.SCORE_INSTALL_ADDRESS,
+                                      method="getIISSInfo",
+                                      params={})
         result = self._icon_service.call(call)
         LiquidICXTest.pp.pprint(result)
 
-
-
+    def testNextTerm(self):
+        call = self._buildTransaction(write=False, method="next_term", params={})
+        result = self._icon_service.call(call)
+        LiquidICXTest.pp.pprint(result)
 
 if __name__ == '__main__':
     unittest.main()
