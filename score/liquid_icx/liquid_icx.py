@@ -8,6 +8,8 @@ from .token_fallback_interface import TokenFallbackInterface
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
+    _NEXT_TERM_HEIGHT = 0
+
     @eventlog(indexed=2)
     def Debug(self, nextPrepTerm: int, blockHeight: int):
         pass
@@ -44,8 +46,14 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._decimals.set(_decimals)
         self._balances[self.msg.sender] = total_supply
 
-    def on_update(self) -> None:
+    def on_update(self, next_term_height: int) -> None:
         super().on_update()
+        LiquidICX._NEXT_TERM_HEIGHT = next_term_height
+        Logger.debug(f'on_update: new_next_term_hegiht={next_term_height}', TAG)
+
+    @external(readonly=True)
+    def getNextTerm(self) -> int:
+        return LiquidICX._NEXT_TERM_HEIGHT
 
     @external(readonly=True)
     def name(self) -> str:
@@ -78,8 +86,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def join(self) -> None:
         self._requestJoin()
 
-        # if iss_info["nextPrepTerm"] - iss_info["blockHeight"] < 100:
-        #    self._handleRequests()
+        #iss_info = self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "getIISSInfo", {})
+        if LiquidICX._NEXT_TERM_HEIGHT - self.block_height < 100:
+            self._handleRequests()
 
         self.Join(self.msg.sender, self.msg.value)
 
@@ -95,12 +104,19 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         else:
             rq.value = rq.value + self.msg.value
 
+    # for easier testing
+    @external(readonly=False)
+    def handleRequests(self):
+        self._handleRequests()
+
     def _handleRequests(self):
         for it in self._requests:
             rq = Request(self.db, it)
+            self.Debug(rq.value, 123)
             self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "setStake", {}, rq.value)
             self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "setDelegation", {"params": "block42"})
-            self._mint(rq.value.address, rq.value)
+            self._mint(it, rq.value)
+        self._clearRequests()
 
     @external(readonly=True)
     def getRequests(self) -> list:
@@ -109,9 +125,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             response.append(Request(self.db, rq).serialize())
         return response
 
+    # for easier testing
     @external(readonly=False)
     def clearRequests(self):
-        #Only dev method
+        self._clearRequests()
+
+    def _clearRequests(self):
         for rq in self._requests:
             Request(self.db, rq).delete()
             self._requests.pop()
@@ -157,7 +176,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: mint to the zero address")
 
         self._balances[_account] = self._balances[_account] + _amount
-        self._total_supply = self._total_supply + _amount
+        self._total_supply.set(self.totalSupply() + _amount)
 
         self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
 
@@ -168,6 +187,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: burn amount exceeds balance")
 
         self._balances[_account] = self._balances[_account] - _amount
-        self._total_supply = self._total_supply - _amount
+        self._total_supply.set(self.totalSupply() - _amount)
 
         self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')

@@ -4,6 +4,7 @@ import logging
 import pprint
 import json
 import logging
+import os
 
 from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.libs.in_memory_zip import gen_deploy_data_content
@@ -47,6 +48,15 @@ class LiquidICXTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         pass
+
+    def _getNextPrepTerm(self):
+        call = self._buildTransaction(write=False,
+                                      to=LiquidICXTest.SCORE_INSTALL_ADDRESS,
+                                      method="getIISSInfo",
+                                      params={})
+        result = self._icon_service.call(call)
+        # LiquidICXTest.pp.pprint(result)
+        return result['nextPRepTerm']
 
     def _getTXResult(self, tx_hash) -> dict:
         logger = logging.getLogger('ICON-SDK-PYTHON')
@@ -97,7 +107,9 @@ class LiquidICXTest(unittest.TestCase):
         return tx
 
     def _testDeploy(self, deploy_address: str = SCORE_INSTALL_ADDRESS):
-        score_content_bytes = gen_deploy_data_content("../")
+        dir_path = os.path.abspath(os.path.dirname(__file__))
+        score_project = os.path.abspath(os.path.join(dir_path, '..'))
+        score_content_bytes = gen_deploy_data_content(score_project)
 
         transaction = DeployTransactionBuilder() \
             .from_(self._wallet.get_address()) \
@@ -107,6 +119,7 @@ class LiquidICXTest(unittest.TestCase):
             .nonce(100) \
             .content_type("application/zip") \
             .content(score_content_bytes) \
+            .params({"next_term_height": self._getNextPrepTerm()}) \
             .build()
 
         # estimated_steps = self._estimateSteps(transaction)
@@ -159,13 +172,21 @@ class LiquidICXTest(unittest.TestCase):
         tx_hash = self._icon_service.send_transaction(signed_transaction)
         tx_result = self._getTXResult(tx_hash)
 
-        self.assertEqual(True, tx_result["status"])
+
         #LiquidICXTest.pp.pprint(tx_result)
 
     def testGetRequests(self):
         tx = self._buildTransaction(write=False, method="getRequests", params={})
         result = self._icon_service.call(tx)
         LiquidICXTest.pp.pprint(result)
+
+    def testHandleRequests(self):
+        tx = self._buildTransaction(method="handleRequests", params={}, margin=200000)
+        signed_transaction = SignedTransaction(tx, self._wallet)
+        tx_hash = self._icon_service.send_transaction(signed_transaction)
+        tx_result = self._getTXResult(tx_hash)
+        LiquidICXTest.pp.pprint(tx_result)
+        self.assertEqual(True, tx_result["status"])
 
     def testGetRequest(self):
         call = CallBuilder() \
@@ -179,34 +200,22 @@ class LiquidICXTest(unittest.TestCase):
         LiquidICXTest.pp.pprint(result)
 
     def testClear(self):
-        transaction = CallTransactionBuilder() \
-            .from_(self._wallet.get_address()) \
-            .to(self._score_address) \
-            .nid(3) \
-            .nonce(100) \
-            .step_limit(100000000) \
-            .method("clearRequests") \
-            .params({}) \
-            .build()
-
+        transaction = self._buildTransaction(method="clearRequests", params={})
         signed_transaction = SignedTransaction(transaction, self._wallet)
-
         tx_hash = self._icon_service.send_transaction(signed_transaction)
         tx_result = self._getTXResult(tx_hash)
         LiquidICXTest.pp.pprint(tx_result)
 
-    def testgetPrepTerm(self):
-        call = self._buildTransaction(write=False,
-                                      to=LiquidICXTest.SCORE_INSTALL_ADDRESS,
-                                      method="getIISSInfo",
-                                      params={})
-        result = self._icon_service.call(call)
-        LiquidICXTest.pp.pprint(result)
 
-    def testNextTerm(self):
+    def getNextTerm(self):
         call = self._buildTransaction(write=False, method="next_term", params={})
         result = self._icon_service.call(call)
         LiquidICXTest.pp.pprint(result)
+        return result
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

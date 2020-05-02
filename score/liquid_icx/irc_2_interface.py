@@ -29,3 +29,7 @@ class IRC2TokenStandard(ABC):
     @abstractmethod
     def deposit(self):
         pass
+
+    @abstractmethod
+    def join(self):
+        pass
