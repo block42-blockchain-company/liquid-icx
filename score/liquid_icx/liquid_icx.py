@@ -11,7 +11,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     _NEXT_TERM_HEIGHT = 0
 
     @eventlog(indexed=2)
-    def Debug(self, nextPrepTerm: int, blockHeight: int):
+    def Debug(self, int1: int, int2: int):
+        pass
+
+    @eventlog(indexed=1)
+    def NextTermStart(self, height_diff: int):
         pass
 
     @eventlog(indexed=2)
@@ -52,7 +56,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Logger.debug(f'on_update: new_next_term_hegiht={next_term_height}', TAG)
 
     @external(readonly=True)
-    def getNextTerm(self) -> int:
+    def nextTerm(self) -> int:
         return LiquidICX._NEXT_TERM_HEIGHT
 
     @external(readonly=True)
@@ -87,6 +91,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._requestJoin()
 
         #iss_info = self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "getIISSInfo", {})
+        self.NextTermStart(LiquidICX._NEXT_TERM_HEIGHT - self.block_height)
         if LiquidICX._NEXT_TERM_HEIGHT - self.block_height < 100:
             self._handleRequests()
 
@@ -155,17 +160,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.Transfer(_from, _to, _value, _data)
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
 
-    @payable
-    @external(readonly=False)
-    def deposit(self):
-        # 1. Stake the ICX in message
-        # 2. Vote with ICX
-        # 3. Mint
-        # TODO Deprected method, we should use create_interface_score
-        # https://icon-project.github.io/score-guide/classes.iconscorebase.html#iconservice.iconscore.icon_score_base.IconScoreBase.IconScoreBase.create_interface_score
-        self.call(FAKE_SYSTEM_CONTRACT_LOCAL, "setStake", {}, self.msg.value)
-        self.call(FAKE_SYSTEM_CONTRACT_LOCAL, "setDelegation", {"params": "block42"})
-        self._mint(self.msg.sender, self.msg.value)
 
     @external(readonly=False)
     def withdraw(self):

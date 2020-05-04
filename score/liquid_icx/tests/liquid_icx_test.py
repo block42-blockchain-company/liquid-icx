@@ -34,6 +34,8 @@ class LiquidICXTest(unittest.TestCase):
     pp = pprint.PrettyPrinter(indent=4)
 
     def setUp(self) -> None:
+        logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+
         if LiquidICXTest.LOCAL_NETWORK_TEST:
             self._wallet = KeyWallet.load("../../keystore_test1", "test1_Account")
             self._icon_service = IconService(HTTPProvider(self.LOCAL_TEST_HTTP_ENDPOINT_URI_V3))
@@ -139,41 +141,14 @@ class LiquidICXTest(unittest.TestCase):
         tx_result = self._testDeploy(self._score_address)
         self.assertEqual(self._score_address, tx_result['scoreAddress'])
 
-    def testDeposit(self):
-        transaction = CallTransactionBuilder() \
-            .from_(self._wallet.get_address()) \
-            .to(self._score_address) \
-            .value(100) \
-            .nid(3) \
-            .nonce(100) \
-            .step_limit(100000000) \
-            .method("deposit") \
-            .params({}) \
-            .build()
-
-        # step_limit = self._estimateSteps(transaction)
-        signed_transaction = SignedTransaction(transaction, self._wallet)
-
-        tx_hash = self._icon_service.send_transaction(signed_transaction)
-        tx_result = self._getTXResult(tx_hash)
-
-        self.assertEqual(True, tx_result["status"])
-        self.assertEqual(2, len(tx_result["eventLogs"]))
-
-        # There should be always exactly 2 events fired at the deposit
-        for log in tx_result["eventLogs"]:
-            event_name = log["indexed"][0]
-            self.assertTrue("Transfer(Address,Address,int,bytes)" == event_name or
-                            "ICXTransfer(Address,Address,int)" == event_name)
 
     def testJoin(self):
         tx = self._buildTransaction(method="join", params={}, value=1)
         signed_transaction = SignedTransaction(tx, self._wallet)
         tx_hash = self._icon_service.send_transaction(signed_transaction)
         tx_result = self._getTXResult(tx_hash)
-
-
-        #LiquidICXTest.pp.pprint(tx_result)
+        logging.info(LiquidICXTest.pp.pprint(tx_result))
+        self.assertEqual(True, tx_result["status"])
 
     def testGetRequests(self):
         tx = self._buildTransaction(write=False, method="getRequests", params={})
