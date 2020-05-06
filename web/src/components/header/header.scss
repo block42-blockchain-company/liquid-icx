@@ -1,0 +1,26 @@
+.navigation-wrapper{
+  .background-shape{
+    position: absolute;
+    width: 100%;
+    left: 0;
+    top: 0;
+  }
+  .navigation{
+    width: 70%;
+    margin: auto;
+    top: 1%;
+    .walled-address{
+      height: 3em;
+    }
+    .licx-logo{
+      width: 7em;
+    }
+    .btn-wallet {
+      font-weight: 700;
+      width: 13em;
+      height: 3em;
+      border-radius: 0;
+      background: #262626;
+    }
+  }
+}
