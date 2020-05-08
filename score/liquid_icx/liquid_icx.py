@@ -1,5 +1,4 @@
 from iconservice import *
-
 from .consts import *
 from .Request import Request
 from .irc_2_interface import IRC2TokenStandard
