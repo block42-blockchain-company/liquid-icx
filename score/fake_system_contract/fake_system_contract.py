@@ -1,14 +1,17 @@
 from iconservice import *
-
+from .fake_system_contract_interface import FakeSystemContractInterface
 TAG = 'FakeSystemContract'
 
 
-class FakeSystemContract(IconScoreBase):
+class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
 
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
         self._stake = DictDB('stake', db, value_type=int)
         self._delegation = DictDB('delegation', db, value_type=str)
+
+    def Delegate(self, from_ : Address, for_: str):
+        pass
 
     def on_install(self) -> None:
         super().on_install()
@@ -27,6 +30,7 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=False)
     def setDelegation(self, params: str):
         self._delegation[self.msg.sender.__str__()] = params
+        self.Delegate(self.msg.sender, params)
 
     @external(readonly=False)
     def claimIScore(self):

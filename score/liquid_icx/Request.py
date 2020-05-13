@@ -6,7 +6,6 @@ class Request:
         self._address = VarDB("rq_address_" + _address.__str__(), db, value_type=str)
         self._value = VarDB("rq_value_" + _address.__str__(), db, value_type=int)
 
-
     def delete(self):
         self._address.remove()
         self._value.remove()
