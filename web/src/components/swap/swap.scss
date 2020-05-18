@@ -1,0 +1,39 @@
+.swap{
+  background: white;
+  box-shadow: 0px 7px 28px lightgray;
+  .tab-item{
+    .tab-title{
+      font-size: 1.7em;
+      font-weight: 200;
+      background: $background-base-washed;
+      color: grey;
+      border: none !important;
+      border-radius: 0 !important;
+    }
+    .active{
+      color: $icx-base !important;
+      font-weight: 600;
+    }
+  }
+  .swap-form{
+    width: 93%;
+    .amount-input{
+      display: block;
+      border: none;
+      border-bottom: 2px solid $background-base-washed;
+      text-align: center;
+      font-size: 1.5em;
+    }
+    .amount-mirror{
+      display: block;
+      font-size: 1.5em;
+    }
+    .btn-convert{
+      width: 100%;
+      border: none;
+      border-radius: 0;
+      font-size: 1.3em;
+      background: $icx-base;
+    }
+  }
+}

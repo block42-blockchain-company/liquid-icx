@@ -7,5 +7,9 @@ import { Vue, Component } from 'vue-property-decorator'
 })
 export default class Swap extends Vue
 {
+    readonly pairs = {"LICX": "ICX",
+                       "ICX": "LICX"}
+
+    amount= ""
 
 }

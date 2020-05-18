@@ -1,5 +1,6 @@
 .navigation-wrapper{
   .background-shape{
+    z-index: -1;
     position: absolute;
     width: 100%;
     left: 0;
@@ -13,4 +14,5 @@
       width: 7em;
     }
   }
+  margin-bottom: 7em;
 }
