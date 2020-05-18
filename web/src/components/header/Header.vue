@@ -7,13 +7,18 @@
                 <b-navbar-brand class="ml-5">
                     <img class="licx-logo" src="../../assets/LICX-logo.svg" alt="logo"/>
                 </b-navbar-brand>
-                <!-- Right aligned nav items -->
+
+                <IconWallet></IconWallet>
+
+
+                <!-- Right aligned nav items
                 <b-navbar-nav v-if="wallet == null" class="ml-auto mr-5">
                     <b-nav-form>
                         <b-button class="btn-wallet"
                                   v-on:click="hasAccount">Connect Wallet</b-button>
                     </b-nav-form>
                 </b-navbar-nav>
+
                 <b-navbar-nav v-else class="ml-auto mr-5">
                     <b-nav-item class="walled-address" disabled>
                         {{wallet}}
@@ -22,7 +27,8 @@
                         <b-button class="btn-wallet"
                                   v-on:click="setWallet(null)">Log out</b-button>
                     </b-nav-form>
-                </b-navbar-nav>
+                </b-navbar-nav>-->
+
             </b-navbar>
         </div>
     </div>

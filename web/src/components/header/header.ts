@@ -1,14 +1,13 @@
-import { Mixins, Component } from 'vue-property-decorator'
-import {IconMixin} from '@/mixins/IconMixin.ts';
-import store from '@/store/index'
-import {mapState, mapMutations, mapGetters} from "vuex";
+import { Vue, Component } from 'vue-property-decorator'
+import IconWallet from "../iconwallet/IconWallet.vue";
 
 
 @Component({
-    computed: mapGetters({ wallet : 'getWallet'}),
-    methods: mapMutations({ setWallet : 'setWallet' })
+    components: {
+        IconWallet
+    }
 })
-export default class Header extends Mixins(IconMixin)
+export default class Header extends Vue
 {
 
 }

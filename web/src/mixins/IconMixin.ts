@@ -21,7 +21,7 @@ export class IconMixin extends Vue {
         store.getters.isDev && console.log(type, " : ", payload)
         if( type == "RESPONSE_HAS_ACCOUNT"){
             if( payload ) this.hasAddress()
-            else alert("No Acccount")
+            else alert("No Acccount") // TODO we need to find a better way to infrm user
         }
         else if ( type == "RESPONSE_HAS_ADDRESS" ){
             if( payload ) this.requestAddress()
