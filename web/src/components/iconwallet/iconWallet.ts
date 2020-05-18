@@ -8,7 +8,4 @@ import {mapGetters, mapMutations} from "vuex";
 })
 export default class IconWallet extends Mixins(IconMixin)
 {
-    created() {
-        console.log("bangers")
-    }
 }
