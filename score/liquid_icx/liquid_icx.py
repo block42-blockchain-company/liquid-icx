@@ -166,9 +166,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         pass
 
     def _mint(self, _account: Address, _amount: int):
-        if _account == ZERO_WALLET_ADDRESS:
-            revert("LiquidICX: mint to the zero address")
-
         self._balances[_account] = self._balances[_account] + _amount
         self._total_supply.set(self.totalSupply() + _amount)
 
