@@ -1,13 +1,17 @@
 from iconservice import *
-
 from .consts import *
 from .Request import Request
 from .irc_2_interface import IRC2TokenStandard
 from .token_fallback_interface import TokenFallbackInterface
 
 
-class LiquidICX(IconScoreBase, IRC2TokenStandard):
+class FakeSystemContractInterface(InterfaceScore):
+    @interface
+    def setStake(self):
+        pass
 
+
+class LiquidICX(IconScoreBase, IRC2TokenStandard):
     _NEXT_TERM_HEIGHT = 0
 
     @eventlog(indexed=2)
@@ -90,14 +94,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def join(self) -> None:
         self._requestJoin()
 
-        #iss_info = self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "getIISSInfo", {})
-        self.NextTermStart(LiquidICX._NEXT_TERM_HEIGHT - self.block_height)
         if LiquidICX._NEXT_TERM_HEIGHT - self.block_height < 100:
             self._handleRequests()
 
         self.Join(self.msg.sender, self.msg.value)
 
-    def _requestJoin(self):
+    def _requestJoin(self) -> None:
         if self.msg.value < 0:
             revert("Joining value cannot be less than zero")
 
@@ -115,11 +117,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._handleRequests()
 
     def _handleRequests(self):
+        fake_system_contract = self.create_interface_score(FAKE_SYSTEM_CONTRACT_YEIUIDO, FakeSystemContractInterface)
         for it in self._requests:
             rq = Request(self.db, it)
-            self.Debug(rq.value, 123)
-            self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "setStake", {}, rq.value)
-            self.call(FAKE_SYSTEM_CONTRACT_YEIUIDO, "setDelegation", {"params": "block42"})
+            fake_system_contract.setStake()
+            # fake_system_contract.setDelegation("block42")
             self._mint(it, rq.value)
         self._clearRequests()
 
@@ -143,9 +145,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         # Checks the sending value and balance.
         if _value < 0:
-            revert("Transferring value cannot be less than zero")
+            revert("LiquidICX: Transferring value cannot be less than zero")
         if self._balances[_from] < _value:
-            revert("Out of balance")
+            revert("LiquidICX: Out of balance")
+        if _to == ZERO_WALLET_ADDRESS:
+            revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
         self._balances[_from] = self._balances[_from] - _value
         self._balances[_to] = self._balances[_to] + _value
@@ -159,7 +163,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # Emits an event log `Transfer`
         self.Transfer(_from, _to, _value, _data)
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
-
 
     @external(readonly=False)
     def withdraw(self):

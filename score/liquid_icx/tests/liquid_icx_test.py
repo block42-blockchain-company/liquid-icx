@@ -20,6 +20,8 @@ from iconsdk.icon_service import IconService
 class LiquidICXTest(unittest.TestCase):
     FORCE_DEPLOY = False  # Change to True, if you want to deploy a new SCORE for testing
 
+
+
     SCORE_INSTALL_ADDRESS = f"cx{'0' * 40}"
     GOV_SCORE_ADDRESS = "cx0000000000000000000000000000000000000001"
 
@@ -52,7 +54,7 @@ class LiquidICXTest(unittest.TestCase):
         pass
 
     def _getNextPrepTerm(self):
-        call = self._buildTransaction(write=False,
+        call = self._buildTransaction(type="read",
                                       to=LiquidICXTest.SCORE_INSTALL_ADDRESS,
                                       method="getIISSInfo",
                                       params={})
@@ -73,37 +75,47 @@ class LiquidICXTest(unittest.TestCase):
                     time.sleep(1)
 
     def _estimateSteps(self, margin) -> int:
-        tx = self._buildTransaction(write=False, method="getStepCosts", to=LiquidICXTest.GOV_SCORE_ADDRESS, params={})
+        tx = self._buildTransaction(type="read", method="getStepCosts", to=LiquidICXTest.GOV_SCORE_ADDRESS, params={})
         result = self._icon_service.call(tx)
         return int(result["contractCall"], 16) + margin
 
-    def _buildTransaction(self, write=True, method=None, params=None, **kwargs):
-        if not isinstance(method, str) or not isinstance(params, dict):
-            raise ValueError("Method should be string, params dictionary.")
+    def _buildTransaction(self, type="write", **kwargs):
+        if type not in ("transfer", "write", "read"):
+            raise ValueError("Wrong method value")
 
-        from_ = self._wallet.get_address() if "from" not in kwargs else kwargs["from"]
+        from_ = self._wallet.get_address() if "from_" not in kwargs else kwargs["from_"]
         to_ = self._score_address if "to" not in kwargs else kwargs["to"]
+        margin_ = 150000 if "margin" not in kwargs else kwargs["margin"]
+        value_ = 0 if "value" not in kwargs else kwargs["value"]
+        method_ = None if "method" not in kwargs else kwargs["method"]
+        params_ = None if "params" not in kwargs else kwargs["params"]
 
-        if write:
-            margin = 150000 if "margin" not in kwargs else kwargs["margin"]
-            value = 0 if "value" not in kwargs else kwargs["value"]
-            steps = self._estimateSteps(margin)
-
+        if type == "write":
+            steps_ = self._estimateSteps(margin_)
             tx = CallTransactionBuilder() \
                 .from_(from_) \
                 .to(to_) \
-                .value(value) \
+                .value(value_) \
                 .nid(3) \
-                .step_limit(steps) \
+                .step_limit(steps_) \
                 .nonce(100) \
-                .method(method) \
+                .method(method_) \
                 .params({}) \
                 .build()
-        else:
+        elif type == "read":
             tx = CallBuilder() \
                 .to(to_) \
-                .method(method) \
-                .params(params) \
+                .method(method_) \
+                .params(params_) \
+                .build()
+        elif type == "transfer":
+            steps_ = self._estimateSteps(margin_)
+            tx = TransactionBuilder()\
+                .from_(from_)\
+                .to(to_)\
+                .value(value_) \
+                .step_limit(steps_) \
+                .nid(3) \
                 .build()
 
         return tx
@@ -150,8 +162,32 @@ class LiquidICXTest(unittest.TestCase):
         logging.info(LiquidICXTest.pp.pprint(tx_result))
         self.assertEqual(True, tx_result["status"])
 
+    def test100Join(self):
+        # send 0.5 icx to that wallet
+        # wait for the succesfull tx
+        # make a join request
+        for it in range(0, 1):
+            # create a wallet a transfer 0.1 ICX to it
+            wallet = KeyWallet.create()
+            tx = self._buildTransaction(type="transfer", to=wallet.get_address(), value=10**17)
+            tx_hash = self._icon_service.send_transaction(SignedTransaction(tx, self._wallet))
+            tx_result = self._getTXResult(tx_hash)
+            self.assertEqual(True, tx_result["status"])
+            # make a join request
+            tx = self._buildTransaction(method="join", from_=wallet.get_address(), params={}, value=10**16)
+            tx_hash = self._icon_service.send_transaction(SignedTransaction(tx, wallet))
+            tx_result = self._getTXResult(tx_hash)
+            logging.info(LiquidICXTest.pp.pprint(tx_result))
+            self.assertEqual(True, tx_result["status"])
+
+
+
+
+
+
+
     def testGetRequests(self):
-        tx = self._buildTransaction(write=False, method="getRequests", params={})
+        tx = self._buildTransaction(type="read", method="getRequests", params={})
         result = self._icon_service.call(tx)
         LiquidICXTest.pp.pprint(result)
 
@@ -183,14 +219,10 @@ class LiquidICXTest(unittest.TestCase):
 
 
     def getNextTerm(self):
-        call = self._buildTransaction(write=False, method="next_term", params={})
+        call = self._buildTransaction(type="read", method="next_term", params={})
         result = self._icon_service.call(call)
         LiquidICXTest.pp.pprint(result)
         return result
-
-
-
-
 
 if __name__ == '__main__':
     unittest.main()
