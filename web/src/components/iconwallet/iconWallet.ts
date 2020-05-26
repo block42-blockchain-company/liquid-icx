@@ -26,9 +26,10 @@ export default class IconWallet extends Mixins(IconMixin)
         }
         else if( type == "RESPONSE_ADDRESS" ){
             this.getBalances(payload).then(result => {
+                store.getters.isDev && console.log("Balances: ", result)
                 store.commit('setWallet', {
-                    address:payload,
-                    icxBalance: result,
+                    address: payload,
+                    balances: result,
                 })
             })
         }

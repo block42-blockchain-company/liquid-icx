@@ -27,16 +27,13 @@ export default class Swap extends Mixins(IconMixin) {
             return;
         }
 
-        this.getLicxApi().then(result => console.log(result))
-
-        this.buildTransaction({
+        const tx = this.buildTransaction({
             write: true,
             method: "join",
             from: this.wallet.address,
             params: {},
             value: Number(this.amount)
-        }).then(result => {
-            console.log(result)
         })
+
     }
 }
