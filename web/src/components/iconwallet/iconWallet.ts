@@ -9,6 +9,11 @@ import {IconMixin} from "@/mixins/IconMixin";
 })
 export default class IconWallet extends Mixins(IconMixin)
 {
+    /*
+    * https://www.icondev.io/docs/chrome-extension-connect
+    * Please read the official docs, how to communicate with the ICONex
+    * */
+
     created(){
         window.addEventListener('ICONEX_RELAY_RESPONSE', this.eventHandler)
     }
