@@ -1,7 +1,6 @@
 import {Component , Mixins} from 'vue-property-decorator'
 import {IconMixin} from "@/mixins/IconMixin";
 import {mapGetters} from "vuex";
-import {reflectionIsSupported} from "vue-class-component/lib/reflect";
 
 
 @Component({

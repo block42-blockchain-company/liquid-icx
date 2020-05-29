@@ -1,0 +1,34 @@
+.balance-wrapper{
+  color: black;
+  box-shadow: 0px 7px 28px lightgray;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  width: 100%;
+  height: 45%;
+
+
+  &:last-child {
+    bottom: 0;
+  }
+
+  .balance-logo {
+    width: 30%;
+  }
+
+  .balance-text {
+    width: 70%;
+    text-align: left;
+  }
+
+  .balance-title {
+    font-size: x-large;
+  }
+
+  .balance-value {
+    font-weight: bold;
+    font-size: larger;
+  }
+}

@@ -42,8 +42,6 @@ export class IconMixin extends Vue {
                 .params(_.params)
                 .build()
         }
-        else{
-        }
         return tx
     }
 }
