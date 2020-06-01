@@ -1,4 +1,4 @@
-.balance-wrapper{
+.balance-wrapper {
   color: black;
   box-shadow: 0 7px 28px lightgray;
   background-color: white;
@@ -8,6 +8,7 @@
   position: absolute;
   width: 100%;
   height: 45%;
+
 
   &:last-child {
     bottom: 0;
@@ -29,5 +30,12 @@
   .balance-value {
     font-weight: bold;
     font-size: larger;
+  }
+}
+
+@media (max-width: 576px) {
+  div .balance-wrapper {
+    position: relative;
+    margin-top: 20px;
   }
 }
