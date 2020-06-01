@@ -12,13 +12,13 @@ export default class Balance extends Mixins(IconMixin) {
 
     getICX() {
         if (this.wallet) {
-            return (this.wallet.balances.icx / 10^18)
+            return (this.wallet.balances.icx / BigInt (Math.pow(10, 18)))
         }
     }
 
     getLICX() {
         if (this.wallet) {
-            return (this.wallet.balances.licx / 10^18)
+            return (this.wallet.balances.licx / BigInt (Math.pow(10, 18)))
         }
     }
 }

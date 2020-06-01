@@ -7,7 +7,7 @@
               <div class="col-sm-7">
                   <Swap />
               </div>
-              <div class="col-sm-5">
+              <div class="offset-sm-1 col-sm-4">
                   <Balance />
               </div>
           </div>
