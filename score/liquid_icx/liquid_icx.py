@@ -1,6 +1,6 @@
 from iconservice import *
 from .consts import *
-from .Request import Request
+from .Holder import Holder
 from .irc_2_interface import IRC2TokenStandard
 from .token_fallback_interface import TokenFallbackInterface
 
@@ -13,6 +13,7 @@ class FakeSystemContractInterface(InterfaceScore):
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
     _NEXT_TERM_HEIGHT = 0
+    _TERM_LENGTH = 43120
 
     @eventlog(indexed=2)
     def Debug(self, int1: int, int2: int):
@@ -36,7 +37,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._decimals = VarDB('decimals', db, value_type=int)
         self._balances = DictDB('balances', db, value_type=int)
 
-        self._requests = ArrayDB("requests", db, value_type=Address)
+        self._holders = ArrayDB("holders", db, value_type=Address)
 
     def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
@@ -89,33 +90,45 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             _data = b'None'
         self._transfer(self.msg.sender, _to, _value, _data)
 
+    @external(readonly=True)
+    def getHolders(self) -> dict:
+        result = {}
+        for hodler in self._holders:
+            result[hodler.__str__()] = self._balances[hodler]
+        return result
+
     @payable
     @external(readonly=False)
     def join(self) -> None:
         self._requestJoin()
 
-        if LiquidICX._NEXT_TERM_HEIGHT - self.block_height < 100:
-            self._handleRequests()
+        # if LiquidICX._NEXT_TERM_HEIGHT - self.block_height < 100:
+        #     self._handleRequests()
 
-        self.Join(self.msg.sender, self.msg.value)
+        # self.Join(self.msg.sender, self.msg.value)
 
     def _requestJoin(self) -> None:
         if self.msg.value < 0:
             revert("Joining value cannot be less than zero")
 
-        rq = Request(self.db, self.msg.sender)
-        if rq.address is '':
-            rq.value = self.msg.value
-            rq.address = self.msg.sender
-            self._requests.put(self.msg.sender)
+        holder = Holder(self.db, self.msg.sender)
+        if holder.address is '':
+            holder.value = self.msg.value
+            holder.address = self.msg.sender
+            holder.join_height = self.block_height
+            self._mint(self.msg.sender, self.msg.value)
+            self._holders.put(self.msg.sender)
         else:
-            rq.value = rq.value + self.msg.value
+            holder.value = holder.value + self.msg.value
 
+    '''
     # for easier testing
     @external(readonly=False)
     def handleRequests(self):
         self._handleRequests()
+    '''
 
+    '''
     def _handleRequests(self):
         fake_system_contract = self.create_interface_score(FAKE_SYSTEM_CONTRACT_YEIUIDO, FakeSystemContractInterface)
         for it in self._requests:
@@ -124,23 +137,29 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             # fake_system_contract.setDelegation("block42")
             self._mint(it, rq.value)
         self._clearRequests()
+    '''
 
+    '''
     @external(readonly=True)
     def getRequests(self) -> list:
         response = []
         for rq in self._requests:
             response.append(Request(self.db, rq).serialize())
         return response
-
+    '''
+    '''
     # for easier testing
     @external(readonly=False)
     def clearRequests(self):
         self._clearRequests()
+    '''
 
+    '''
     def _clearRequests(self):
         for rq in self._requests:
             Request(self.db, rq).delete()
             self._requests.pop()
+    '''
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         # Checks the sending value and balance.
@@ -150,6 +169,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Out of balance")
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
+
+        if Holder(self.db, _from).canTransfer(LiquidICX):
+            revert()
 
         self._balances[_from] = self._balances[_from] - _value
         self._balances[_to] = self._balances[_to] + _value
@@ -163,10 +185,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # Emits an event log `Transfer`
         self.Transfer(_from, _to, _value, _data)
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
-
-    @external(readonly=False)
-    def withdraw(self):
-        pass
 
     def _mint(self, _account: Address, _amount: int):
         self._balances[_account] = self._balances[_account] + _amount
