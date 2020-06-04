@@ -21,8 +21,6 @@ export default new Vuex.Store({
       state.wallet = wallet
     }
   },
-  actions: {
-  },
-  modules: {
-  }
+  actions: {},
+  modules: {}
 })

@@ -7,6 +7,9 @@
               <div class="col-sm-7">
                   <Swap />
               </div>
+              <div class="offset-sm-1 col-sm-4">
+                  <Balance />
+              </div>
           </div>
       </div>
   </div>
@@ -20,14 +23,14 @@ import Component from 'vue-class-component'
 import {Vue} from "vue-property-decorator";
 import Header from '@/components/header/Header.vue'
 import Swap from "@/components/swap/Swap.vue";
+import Balance from "@/components/balance/Balance.vue";
 
-import IconService from 'icon-sdk-js'
 
 @Component({
   components: {
     Header,
-    IconService,
-    Swap
+    Swap,
+    Balance
   }
 })
 
