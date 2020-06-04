@@ -39,8 +39,5 @@
     </div>
 </template>
 
-<h1 v-if="awesome">Vue is awesome!</h1>
-<h1 v-else>Oh no 😢</h1>
-
 <style lang="sccs" src="./balance.scss"></style>
 <script lang="ts" src="./balance.ts"></script>
