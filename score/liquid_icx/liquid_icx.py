@@ -97,15 +97,21 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             result[hodler.__str__()] = self._balances[hodler]
         return result
 
+    @external(readonly=False)
+    def randomTest(self) -> dict:
+        temp = list(self._holders)
+        temp.remove(Address.from_string("hx3d6288b464f6f3bfcba5e28cddc5e8b9b3e788f5"))
+        self._holders = temp
+        return {"originaL": list(self._holders),
+                "temp": temp}
+
+
+
     @payable
     @external(readonly=False)
     def join(self) -> None:
         self._requestJoin()
 
-        # if LiquidICX._NEXT_TERM_HEIGHT - self.block_height < 100:
-        #     self._handleRequests()
-
-        # self.Join(self.msg.sender, self.msg.value)
 
     def _requestJoin(self) -> None:
         if self.msg.value < 0:
@@ -113,65 +119,24 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         holder = Holder(self.db, self.msg.sender)
         if holder.address is '':
-            holder.value = self.msg.value
-            holder.address = self.msg.sender
-            holder.join_height = self.block_height
+            holder.create(self.msg,
+                          self.block_height,
+                          LiquidICX._NEXT_TERM_HEIGHT + LiquidICX._TERM_LENGTH)
             self._mint(self.msg.sender, self.msg.value)
             self._holders.put(self.msg.sender)
         else:
             holder.value = holder.value + self.msg.value
 
-    '''
-    # for easier testing
-    @external(readonly=False)
-    def handleRequests(self):
-        self._handleRequests()
-    '''
-
-    '''
-    def _handleRequests(self):
-        fake_system_contract = self.create_interface_score(FAKE_SYSTEM_CONTRACT_YEIUIDO, FakeSystemContractInterface)
-        for it in self._requests:
-            rq = Request(self.db, it)
-            fake_system_contract.setStake()
-            # fake_system_contract.setDelegation("block42")
-            self._mint(it, rq.value)
-        self._clearRequests()
-    '''
-
-    '''
-    @external(readonly=True)
-    def getRequests(self) -> list:
-        response = []
-        for rq in self._requests:
-            response.append(Request(self.db, rq).serialize())
-        return response
-    '''
-    '''
-    # for easier testing
-    @external(readonly=False)
-    def clearRequests(self):
-        self._clearRequests()
-    '''
-
-    '''
-    def _clearRequests(self):
-        for rq in self._requests:
-            Request(self.db, rq).delete()
-            self._requests.pop()
-    '''
-
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         # Checks the sending value and balance.
         if _value < 0:
-            revert("LiquidICX: Transferring value cannot be less than zero")
+            revert("LiquidICX: Transferring value cannot be less than zero.")
         if self._balances[_from] < _value:
             revert("LiquidICX: Out of balance")
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
-
         if Holder(self.db, _from).canTransfer(LiquidICX):
-            revert()
+            revert("LiquidICX: You can not transfer your LICX yet.")
 
         self._balances[_from] = self._balances[_from] - _value
         self._balances[_to] = self._balances[_to] + _value

@@ -3,37 +3,52 @@ from iconservice import *
 
 class Holder:
     def __init__(self, db: IconScoreDatabase, _address: Address):
-        self._address = VarDB("rq_address_" + _address.__str__(), db, value_type=str)
-        self._value = VarDB("rq_value_" + _address.__str__(), db, value_type=int)
-        self._join_height = VarDB("join_height_" + _address.__str__(), db, value_type=int)
+        # Presents how much user deposited to SCORE in chronological order
+        self._join_values = ArrayDB("join_values_" + _address.__str__(), db, value_type=int)
+        self._join_height = ArrayDB("join_height_" + _address.__str__(), db, value_type=int)
+        self._allow_transfer_height = ArrayDB("allow_transfer_" + _address.__str__(), db, value_type=int)
+
+        # How much is user allowed to transfer
+        # Sum of these two variables should be equal to LiquidICX._balance[user_adress]
+        # After two terms were passed, locked became transferable
+        self._transferable = VarDB("transferable_" + _address.__str__(), db, value_type=int)
+        self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
 
 
-    def create(self, msg):
-        ## Initiliation of a holder, when he joins the first time
+    def create(self, msg, block_height, allow_transfer_height):
+        # Initiliation of a holder, when he joins the first time
+        # self.address = msg.sender
+        self._join_values.put(msg.value)
+        self._join_height.put(block_height)
+        self._allow_transfer.put(allow_transfer_height)
+
+        self._locked = msg.value
+
+    def unlock(self, ):
+        # map from _locked to _transferable
         pass
 
+
     def delete(self):
-        self._address.remove()
-        self._value.remove()
+        pass
 
-    def canTransfer(self, next_term: int) -> bool:
-        return self._join_height.get() < next_term
+
+    def canTransfer(self, next_term: int) -> int:
+        indices = list()
+        for it in range(len(self._allow_transfer_height)):
+            if next_term > self._allow_transfer_height[it]:
+                indices.append(it)
+            else:
+                break
+
+        if len(indices):
+            self.unlock()
+
+        return self._transferable.get()
 
     @property
-    def address(self):
-        return self._address.get()
-
-    @address.setter
-    def address(self, address: Address):
-        self._address.set(address.__str__())
-
-    @property
-    def value(self):
-        return self._value.get()
-
-    @value.setter
-    def value(self, value: int):
-        self._value.set(value)
+    def join_values(self):
+        return self._join_values.get()
 
     @property
     def join_height(self):
@@ -43,9 +58,8 @@ class Holder:
     def join_height(self, value: int):
         self._join_height.set(value)
 
-
     def serialize(self) -> dict:
         return {
-            "address": self.address,
-            "value": self.value
+            # "address": self.address,
+            # "value": self.value
         }
