@@ -20,13 +20,27 @@ class Holder:
         # self.address = msg.sender
         self._join_values.put(msg.value)
         self._join_height.put(block_height)
-        self._allow_transfer.put(allow_transfer_height)
+        self._allow_transfer_height.put(allow_transfer_height)
 
         self._locked = msg.value
 
-    def unlock(self, ):
-        # map from _locked to _transferable
+    def unlock(self, indices_to_delete):
+        # I should just probably shift elements to left here
         pass
+
+    def remove_from_array(self, array: ArrayDB, el) -> None:
+        temp = []
+        # find that element and remove it
+        while array:
+            current = array.pop()
+            if current == el:
+                break
+            else:
+                temp.append(current)
+        # append temp back to array
+        while temp:
+            array.put(temp.pop())
+
 
 
     def delete(self):
@@ -42,7 +56,7 @@ class Holder:
                 break
 
         if len(indices):
-            self.unlock()
+            self.unlock(indices)
 
         return self._transferable.get()
 
@@ -56,7 +70,8 @@ class Holder:
 
     @join_height.setter
     def join_height(self, value: int):
-        self._join_height.set(value)
+        pass
+        # self._join_height.set(value)
 
     def serialize(self) -> dict:
         return {

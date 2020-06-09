@@ -158,4 +158,8 @@ class LiquidICXTest(IconIntegrateTestBase):
         LiquidICXTest.pp.pprint(tx_result)
         # self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
 
+    def test_random_test(self):
+        tx = self._build_transaction(method="randomTest", type_="write")
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
 
