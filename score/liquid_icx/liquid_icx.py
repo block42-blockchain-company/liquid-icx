@@ -12,11 +12,14 @@ class FakeSystemContractInterface(InterfaceScore):
 
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
-    _NEXT_TERM_HEIGHT = 0
-    _TERM_LENGTH = 43120
+    _NEXT_TERM_HEIGHT = 0  # Temp
 
     @eventlog(indexed=2)
     def Debug(self, int1: int, int2: int):
+        pass
+
+    @eventlog(indexed=1)
+    def Debug(self, str1: str):
         pass
 
     @eventlog(indexed=1)
@@ -105,27 +108,31 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return {"originaL": list(self._holders),
                 "temp": temp}
 
-
+    @external(readonly=True)
+    def getHolder(self) -> dict:
+        if self.msg.sender is None:
+            revert("LiquidICX: You need to specify the 'from' attribute in your call.")
+        return Holder(self.db, self.msg.sender).serialize()
 
     @payable
     @external(readonly=False)
     def join(self) -> None:
         self._requestJoin()
 
-
     def _requestJoin(self) -> None:
         if self.msg.value < 0:
             revert("Joining value cannot be less than zero")
 
         holder = Holder(self.db, self.msg.sender)
-        if holder.address is '':
-            holder.create(self.msg,
+        if self._balances[self.msg.sender.__str__()] == 0:
+            holder.create(self.msg.value,
                           self.block_height,
-                          LiquidICX._NEXT_TERM_HEIGHT + LiquidICX._TERM_LENGTH)
-            self._mint(self.msg.sender, self.msg.value)
+                          LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
             self._holders.put(self.msg.sender)
         else:
-            holder.value = holder.value + self.msg.value
+            holder.update(self.msg.value, self.block_height, LiquidICX._NEXT_TERM_HEIGHT + LiquidICX._TERM_LENGTH)
+
+        self._mint(self.msg.sender, self.msg.value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         # Checks the sending value and balance.
@@ -135,7 +142,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Out of balance")
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
-        if Holder(self.db, _from).canTransfer(LiquidICX):
+        if Holder(self.db, _from).canTransfer(LiquidICX._NEXT_TERM_HEIGHT):
             revert("LiquidICX: You can not transfer your LICX yet.")
 
         self._balances[_from] = self._balances[_from] - _value
