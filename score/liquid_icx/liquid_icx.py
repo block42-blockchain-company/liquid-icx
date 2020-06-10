@@ -124,7 +124,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("Joining value cannot be less than zero")
 
         holder = Holder(self.db, self.msg.sender)
-        if self._balances[self.msg.sender.__str__()] == 0:
+        if not self._balances[self.msg.sender.__str__()]:
             holder.create(self.msg.value,
                           self.block_height,
                           LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
@@ -142,15 +142,22 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Out of balance")
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
-        if Holder(self.db, _from).canTransfer(LiquidICX._NEXT_TERM_HEIGHT):
-            revert("LiquidICX: You can not transfer your LICX yet.")
 
+        sender = Holder(self.db, _from)
+        reciever = Holder(self.db, _to)
+
+        if sender.canTransfer(LiquidICX._NEXT_TERM_HEIGHT):
+            revert("LiquidICX: You don't have any transferable LICX yet.")
+
+        sender.transferable = sender.transferable - _value
         self._balances[_from] = self._balances[_from] - _value
+
+        reciever.transferable = reciever.transferable + _value
         self._balances[_to] = self._balances[_to] + _value
 
         if _to.is_contract:
             # If the recipient is SCORE,
-            #   then calls `tokenFallback` to hand over control.
+            # then calls `tokenFallback` to hand over control.
             recipient_score = self.create_interface_score(_to, TokenFallbackInterface)
             recipient_score.tokenFallback(_from, _value, _data)
 
@@ -174,3 +181,4 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._total_supply.set(self.totalSupply() - _amount)
 
         self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')
+

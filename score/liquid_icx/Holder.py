@@ -71,6 +71,10 @@ class Holder:
     def transferable(self) -> int:
         return self._transferable.get()
 
+    @transferable.setter
+    def transferable(self, value) -> int:
+        self._transferable.set(value)
+
     @property
     def locked(self) -> int:
         return self._locked.get()
