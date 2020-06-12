@@ -22,10 +22,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def Debug(self, str1: str):
         pass
 
-    @eventlog(indexed=1)
-    def NextTermStart(self, height_diff: int):
-        pass
-
     @eventlog(indexed=2)
     def Join(self, _from: Address, _value: int):
         pass
@@ -42,9 +38,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._holders = ArrayDB("holders", db, value_type=Address)
 
-    def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
+    def on_install(self, _next_term_height: int, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
-
         if _initialSupply < 0:
             revert("Initial supply cannot be less than zero")
 
@@ -58,10 +53,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._decimals.set(_decimals)
         self._balances[self.msg.sender] = total_supply
 
-    def on_update(self, next_term_height: int) -> None:
+        LiquidICX._NEXT_TERM_HEIGHT = _next_term_height
+
+    def on_update(self, _next_term_height: int) -> None:
         super().on_update()
-        LiquidICX._NEXT_TERM_HEIGHT = next_term_height
-        Logger.debug(f'on_update: new_next_term_hegiht={next_term_height}', TAG)
+        LiquidICX._NEXT_TERM_HEIGHT = _next_term_height
+        Logger.debug(f'on_update: new_next_term_hegiht={_next_term_height}', TAG)
 
     @external(readonly=True)
     def nextTerm(self) -> int:
@@ -114,24 +111,37 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: You need to specify the 'from' attribute in your call.")
         return Holder(self.db, self.msg.sender).serialize()
 
+    @external(readonly=False)
+    def removeHolder(self) -> None:
+        Holder(self.db, self.msg.sender).delete()
+
+        licx_amount = self._balances[self.msg.sender]
+        self._burn(self.msg.sender, licx_amount)
+
+        temp = []
+        while self._holders:
+            current = self._holders.pop()
+            if current == self.msg.sender:
+                break
+            else:
+                temp.append(current)
+
+        while temp:
+            self._holders.put(temp.pop())
+
     @payable
     @external(readonly=False)
     def join(self) -> None:
-        self._requestJoin()
-
-    def _requestJoin(self) -> None:
         if self.msg.value < 0:
             revert("Joining value cannot be less than zero")
 
         holder = Holder(self.db, self.msg.sender)
-        if not self._balances[self.msg.sender.__str__()]:
-            holder.create(self.msg.value,
-                          self.block_height,
+        if self.msg.sender not in self._holders:
+            holder.create(self.msg.value, self.block_height,
                           LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
             self._holders.put(self.msg.sender)
         else:
-            holder.update(self.msg.value, self.block_height, LiquidICX._NEXT_TERM_HEIGHT + LiquidICX._TERM_LENGTH)
-
+            holder.update(self.msg.value, self.block_height, LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
         self._mint(self.msg.sender, self.msg.value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
@@ -144,15 +154,18 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
         sender = Holder(self.db, _from)
-        reciever = Holder(self.db, _to)
+        receiver = Holder(self.db, _to)
 
-        if sender.canTransfer(LiquidICX._NEXT_TERM_HEIGHT):
+        if not sender.canTransfer(LiquidICX._NEXT_TERM_HEIGHT):
             revert("LiquidICX: You don't have any transferable LICX yet.")
 
         sender.transferable = sender.transferable - _value
         self._balances[_from] = self._balances[_from] - _value
 
-        reciever.transferable = reciever.transferable + _value
+        if _to not in self._holders:
+            self._holders.put(_to)
+
+        receiver.transferable = receiver.transferable + _value
         self._balances[_to] = self._balances[_to] + _value
 
         if _to.is_contract:
@@ -180,5 +193,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._balances[_account] = self._balances[_account] - _amount
         self._total_supply.set(self.totalSupply() - _amount)
 
-        self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')
+        # TODO  Does it make sense to remove here a holder, if balances[owner] == 0 ?
 
+        self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')

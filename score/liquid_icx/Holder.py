@@ -5,7 +5,7 @@ class Holder:
     def __init__(self, db: IconScoreDatabase, _address: Address):
         # How much is user allowed to transfer
         # Sum of these two variables should be equal to LiquidICX._balance[user_adress]
-        # After two terms were passed, locked became transferable
+        # After two terms were passed, locked becomes transferable
         self._transferable = VarDB("transferable_" + _address.__str__(), db, value_type=int)
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
 
@@ -15,13 +15,13 @@ class Holder:
         self._allow_transfer_height = ArrayDB("allow_transfer_" + _address.__str__(), db, value_type=int)
 
     def create(self, _amount, _block_height, _allow_transfer_height):
-        # Initiliation of a holder, when he joins the first time
+        # Initialisation of a holder, when he joins the first time
         self._join_values.put(_amount)
         self._join_height.put(_block_height)
         self._allow_transfer_height.put(_allow_transfer_height)
 
         self.locked = _amount
-        self._transferable.set(0)  # Probably don't need that
+        # self._transferable.set(0)  # Probably don't need that
 
     def update(self, _amount, _block_height, _allow_transfer_height):
         self._join_values.put(_amount)
@@ -44,20 +44,26 @@ class Holder:
                 break
             else:
                 temp.append(current)
-        # append temp back to array
+        # append temp back to arrayDB
         while temp:
             array.put(temp.pop())
 
     def delete(self):
-        pass
+        while self._join_values:
+            self._join_values.pop()
+            self._join_height.pop()
+            self._allow_transfer_height.pop()
+
+        self.locked = 0
+        self.transferable = 0
 
     def canTransfer(self, next_term: int) -> int:
-        if self.locked:
+        if self.locked > 0:
             for it in range(len(self._allow_transfer_height)):
                 if next_term > self._allow_transfer_height[it]:
-                    # LICX
-                    self._locked.set(self._locked.get() - self._join_values[it])
-                    self._transferable.set(self._transferable.get() + self._join_values[it])
+                    # unluck LICX
+                    self.locked = self.locked - self._join_values[it]
+                    self.transferable = self.transferable + self._join_values[it]
 
                     self.remove_from_array(self._join_values, self._join_values[it])
                     self.remove_from_array(self._join_height, self._join_height[it])
@@ -65,7 +71,7 @@ class Holder:
                 else:
                     break
 
-        return self._transferable.get()
+        return self.transferable
 
     @property
     def transferable(self) -> int:
