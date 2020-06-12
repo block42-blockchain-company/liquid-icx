@@ -64,6 +64,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def nextTerm(self) -> int:
         return LiquidICX._NEXT_TERM_HEIGHT
 
+    @external(readonly=False)
+    def setNextTerm(self, _next_term: int):
+        LiquidICX._NEXT_TERM_HEIGHT = _next_term
+
     @external(readonly=True)
     def name(self) -> str:
         return "LiquidICX"
@@ -96,14 +100,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         for hodler in self._holders:
             result[hodler.__str__()] = self._balances[hodler]
         return result
-
-    @external(readonly=False)
-    def randomTest(self) -> dict:
-        temp = list(self._holders)
-        temp.remove(Address.from_string("hx3d6288b464f6f3bfcba5e28cddc5e8b9b3e788f5"))
-        self._holders = temp
-        return {"originaL": list(self._holders),
-                "temp": temp}
 
     @external(readonly=True)
     def getHolder(self) -> dict:
