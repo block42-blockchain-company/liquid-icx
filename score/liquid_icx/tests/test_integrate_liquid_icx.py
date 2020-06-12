@@ -29,7 +29,7 @@ class LiquidICXTest(IconIntegrateTestBase):
     LOCAL_SCORE_ADDRESS = "cxf56bb59257b412183c6ed70d7a4ed371306a98d9"
 
     YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    YEUOIDO_SCORE_ADDRESS = "cx4322ccf1ad0578a8909a162b9154170859c913eb"
+    YEUOIDO_SCORE_ADDRESS = "cxbf9095b8b711068cc5cd1f813b60647e0325408d"
 
     pp = pprint.PrettyPrinter(indent=4)
 
@@ -42,12 +42,12 @@ class LiquidICXTest(IconIntegrateTestBase):
             self._score_address = LiquidICXTest.LOCAL_SCORE_ADDRESS
         else:
             self._wallet = KeyWallet.load("../../keystore_test3", "test3_Account")
+            self._wallet2 = KeyWallet.load("../../keystore_test1", "test1_Account")
             self._icon_service = IconService(HTTPProvider(self.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
             self._score_address = LiquidICXTest.YEUOIDO_SCORE_ADDRESS
 
         if LiquidICXTest.FORCE_DEPLOY:
             self._score_address = self._deploy_score()["scoreAddress"]
-
 
     def _deploy_score(self, to: str = SCORE_INSTALL_ADDRESS) -> dict:
         score_content_bytes = gen_deploy_data_content(LiquidICXTest.SCORE_PROJECT)
@@ -61,7 +61,7 @@ class LiquidICXTest(IconIntegrateTestBase):
             .nonce(100) \
             .content_type("application/zip") \
             .content(score_content_bytes) \
-            .params({"next_term_height": self._get_next_prep_term()}) \
+            .params({"_next_term_height": self._get_next_prep_term_IISS()}) \
             .build()
 
         # Returns the signed transaction object having a signature
@@ -70,23 +70,13 @@ class LiquidICXTest(IconIntegrateTestBase):
         # process the transaction in local
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
 
-        self.assertEqual(True, tx_result['status'])
-        self.assertTrue('scoreAddress' in tx_result)
+        self.assertEqual(True, tx_result['status'], msg=LiquidICXTest.pp.pformat(tx_result))
+        self.assertTrue('scoreAddress' in tx_result, msg=LiquidICXTest.pp.pformat(tx_result))
+
+        if LiquidICXTest.FORCE_DEPLOY:
+            print(f"New SCORE address: {tx_result['scoreAddress']}")
 
         return tx_result
-
-    def test_score_update(self):
-        # update SCORE
-        tx_result = self._deploy_score(self._score_address)
-        self.assertEqual(self._score_address, tx_result['scoreAddress'])
-
-    def _get_next_prep_term(self):
-        call = self._build_transaction(type_="read",
-                                       to=SCORE_INSTALL_ADDRESS,
-                                       method="getIISSInfo",
-                                       params={})
-        result = self._icon_service.call(call)
-        return result['nextPRepTerm']
 
     def _estimate_steps(self, margin) -> int:
         tx = self._build_transaction(type_="read", method="getStepCosts", to=LiquidICXTest.GOV_SCORE_ADDRESS, params={})
@@ -118,9 +108,10 @@ class LiquidICXTest(IconIntegrateTestBase):
                 .build()
         elif type_ == "read":
             tx = CallBuilder() \
+                .from_(from_) \
                 .to(to_) \
                 .method(method_) \
-                .params({}) \
+                .params(params_) \
                 .build()
         elif type_ == "transfer":
             steps_ = self._estimate_steps(margin_)
@@ -133,6 +124,32 @@ class LiquidICXTest(IconIntegrateTestBase):
                 .build()
 
         return tx
+
+    def _get_next_prep_term_IISS(self):
+        call = self._build_transaction(type_="read",
+                                       to=SCORE_INSTALL_ADDRESS,
+                                       method="getIISSInfo",
+                                       params={})
+        result = self._icon_service.call(call)
+        # LiquidICXTest.pp.pprint(result)
+        return result['nextPRepTerm']
+
+    def test_score_update(self):
+        # update SCORE
+        tx_result = self._deploy_score(self._score_address)
+        self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=LiquidICXTest.pp.pformat(tx_result))
+
+    def test_set_next_prep_term(self):
+        paras = {"_next_term": int(self._get_next_prep_term_IISS(), 16) + (43120 * 2)}
+        tx = self._build_transaction(method="setNextTerm", params=paras)
+        signed_transaction = SignedTransaction(tx, self._wallet)
+        tx_result = self.process_transaction(signed_transaction, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+
+    def test_get_next_prep_term(self):
+        tx = self._build_transaction(method="nextTerm", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(int(tx_result, 16))
 
     def test_join(self):
         tx = self._build_transaction(method="join", value=1)
@@ -157,6 +174,36 @@ class LiquidICXTest(IconIntegrateTestBase):
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
         # self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
+
+    def test_get_holder(self):
+        tx = self._build_transaction(method="getHolder", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+
+    def test_transfer(self):
+        paras = {
+            "_to": self._wallet2.get_address(),
+            "_value": 1
+        }
+        tx = self._build_transaction(method="transfer", params=paras)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+
+    def test_remove_holder(self):
+        tx = self._build_transaction(method="removeHolder")
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+
+    def test_balance_of(self):
+        paras = {"_owner": self._wallet.get_address()}
+        tx = self._build_transaction(method="balanceOf", params=paras, type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+
+    def test_total_supply(self):
+     tx = self._build_transaction(method="totalSupply", type_="read")
+     tx_result = self.process_call(tx, self._icon_service)
+     LiquidICXTest.pp.pprint(tx_result)
 
     def test_random_test(self):
         tx = self._build_transaction(method="randomTest", type_="write")
