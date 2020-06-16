@@ -109,21 +109,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @external(readonly=False)
     def removeHolder(self) -> None:
+        self._burn(self.msg.sender, self._balances[self.msg.sender])
         Holder(self.db, self.msg.sender).delete()
+        Holder.remove_from_array(self._holders, self.msg.sender)
 
-        licx_amount = self._balances[self.msg.sender]
-        self._burn(self.msg.sender, licx_amount)
-
-        temp = []
-        while self._holders:
-            current = self._holders.pop()
-            if current == self.msg.sender:
-                break
-            else:
-                temp.append(current)
-
-        while temp:
-            self._holders.put(temp.pop())
 
     @payable
     @external(readonly=False)

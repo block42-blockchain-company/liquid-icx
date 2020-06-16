@@ -30,10 +30,6 @@ class Holder:
 
         self.locked = self.locked + _amount
 
-
-    def unlock(self):
-        pass
-
     @staticmethod
     def remove_from_array(array: ArrayDB, el) -> None:
         temp = []
@@ -57,7 +53,7 @@ class Holder:
         self.locked = 0
         self.transferable = 0
 
-    def canTransfer(self, next_term: int) -> int:
+    def unlock(self, next_term: int):
         if self.locked > 0:
             for it in range(len(self._allow_transfer_height)):
                 if next_term > self._allow_transfer_height[it]:
@@ -71,6 +67,8 @@ class Holder:
                 else:
                     break
 
+    def canTransfer(self, next_term: int) -> int:
+        self.unlock(next_term)
         return self.transferable
 
     @property
@@ -78,7 +76,7 @@ class Holder:
         return self._transferable.get()
 
     @transferable.setter
-    def transferable(self, value) -> int:
+    def transferable(self, value):
         self._transferable.set(value)
 
     @property
@@ -90,16 +88,16 @@ class Holder:
         self._locked.set(value)
 
     @property
-    def join_values(self):
+    def join_values(self) -> ArrayDB:
         return self._join_values
 
     @property
-    def join_height(self):
+    def join_height(self) -> ArrayDB:
         return self._join_height
 
-    @join_height.setter
-    def join_height(self, value: int):
-        pass
+    @property
+    def allow_transfer_height(self) -> ArrayDB:
+        return self._allow_transfer_height
 
     def serialize(self) -> dict:
         return {
