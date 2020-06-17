@@ -1,5 +1,5 @@
 import {Component, Vue } from "vue-property-decorator";
-import IconService, { IconBuilder } from 'icon-sdk-js'
+import IconService, { IconBuilder, IconValidator } from 'icon-sdk-js'
 
 
 @Component({
@@ -10,7 +10,7 @@ import IconService, { IconBuilder } from 'icon-sdk-js'
 export class IconMixin extends Vue {
     public readonly provider = new IconService.HttpProvider('https://bicon.net.solidwallet.io/api/v3');
     public readonly iconService = new IconService(this.provider);
-    public readonly licx_score_address = "cx4322ccf1ad0578a8909a162b9154170859c913eb"
+    public readonly licx_score_address = "cxbf9095b8b711068cc5cd1f813b60647e0325408d"
 
     async getBalances(address ){
         const icxBalance = await this.iconService.getBalance(address).execute();
@@ -31,13 +31,32 @@ export class IconMixin extends Vue {
         return apiList.getList()
     }
 
+    checkAddress( address: string){
+        return IconValidator.isEoaAddress(address)
+    }
+
+
     buildTransaction(_: Record<string, any>){
-        const { CallBuilder } = IconBuilder;
+        const { CallBuilder, CallTransactionBuilder } = IconBuilder;
 
         let tx = null;
         if(!_.write){
             tx = new CallBuilder()
                 .to(this.licx_score_address)
+                .method(_.method)
+                .params(_.params)
+                .build()
+        }
+        else{
+            tx = new CallTransactionBuilder()
+                .from(_.from)
+                .to(this.licx_score_address)
+                .value(_.value)
+                .nid(3)
+                .stepLimit(_.steps)
+                .version(BigInt(3))
+                .timestamp((new Date()).getTime() * 1000)
+                .nonce(100)
                 .method(_.method)
                 .params(_.params)
                 .build()
