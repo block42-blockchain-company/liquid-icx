@@ -1,7 +1,7 @@
 from iconservice import *
 from .consts import *
 from .Holder import Holder
-from .irc_2_interface import IRC2TokenStandard
+from .interfaces.irc_2_interface import *
 from .token_fallback_interface import TokenFallbackInterface
 
 

@@ -19,7 +19,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
     SCORE_PROJECT= os.path.abspath(os.path.join(DIR_PATH, '..'))
 
-    FORCE_DEPLOY = False  # Change to True, if you want to deploy a new SCORE for testing
+    FORCE_DEPLOY = True  # Change to True, if you want to deploy a new SCORE for testing
 
     GOV_SCORE_ADDRESS = "cx0000000000000000000000000000000000000001"
 
@@ -38,12 +38,12 @@ class LiquidICXTest(IconIntegrateTestBase):
 
         if LiquidICXTest.LOCAL_NETWORK_TEST:
             self._wallet = KeyWallet.load("../../keystore_test1", "test1_Account")
-            self._icon_service = None
+            self._icon_service = IconService(HTTPProvider(LiquidICXTest.LOCAL_TEST_HTTP_ENDPOINT_URI_V3))
             self._score_address = LiquidICXTest.LOCAL_SCORE_ADDRESS
         else:
             self._wallet = KeyWallet.load("../../keystore_test3", "test3_Account")
             self._wallet2 = KeyWallet.load("../../keystore_test1", "test1_Account")
-            self._icon_service = IconService(HTTPProvider(self.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
+            self._icon_service = IconService(HTTPProvider(LiquidICXTest.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
             self._score_address = LiquidICXTest.YEUOIDO_SCORE_ADDRESS
 
         if LiquidICXTest.FORCE_DEPLOY:
