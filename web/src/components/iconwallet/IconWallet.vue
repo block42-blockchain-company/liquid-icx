@@ -8,7 +8,7 @@
 
     <b-navbar-nav v-else class="ml-auto mr-5">
         <b-nav-item class="wallet-address" disabled>
-            {{wallet}}
+            {{wallet.address}}
         </b-nav-item>
         <b-nav-form>
             <b-button class="btn-wallet"

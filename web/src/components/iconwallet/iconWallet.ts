@@ -9,6 +9,10 @@ import {IconMixin} from "@/mixins/IconMixin";
 })
 export default class IconWallet extends Mixins(IconMixin)
 {
+    /*
+    * https://www.icondev.io/docs/chrome-extension-connect
+    * */
+
     created(){
         window.addEventListener('ICONEX_RELAY_RESPONSE', this.eventHandler)
     }
@@ -25,7 +29,13 @@ export default class IconWallet extends Mixins(IconMixin)
             else alert("No Address")
         }
         else if( type == "RESPONSE_ADDRESS" ){
-            store.commit('setWallet', payload)
+            this.getBalances(payload).then(result => {
+                store.getters.isDev && console.log("Balances: ", result)
+                store.commit('setWallet', {
+                    address: payload,
+                    balances: result,
+                })
+            })
         }
     }
 
