@@ -19,10 +19,6 @@
     width: 93%;
     .amount-input{
       display: block;
-      border: none;
-      border-bottom: 2px solid $background-base-washed;
-      text-align: center;
-      font-size: 1.5em;
     }
     .amount-mirror{
       display: block;
@@ -30,14 +26,6 @@
     }
     .btn-convert{
       width: 100%;
-      border: none;
-      border-radius: 0;
-      font-size: 1.3em;
-      background: $icx-base;
-      &:disabled{
-        cursor: not-allowed;
-        pointer-events: all !important;
-      }
     }
   }
 }
