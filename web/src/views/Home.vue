@@ -10,6 +10,9 @@
               <div class="offset-sm-1 col-sm-4">
                   <Balance />
               </div>
+              <div class="col-sm-12 mt-5">
+                  <Transfer />
+              </div>
           </div>
       </div>
   </div>
@@ -24,13 +27,15 @@ import {Vue} from "vue-property-decorator";
 import Header from '@/components/header/Header.vue'
 import Swap from "@/components/swap/Swap.vue";
 import Balance from "@/components/balance/Balance.vue";
+import Transfer from "@/components/transfer/Transfer.vue";
 
 
 @Component({
   components: {
     Header,
     Swap,
-    Balance
+    Balance,
+    Transfer
   }
 })
 
