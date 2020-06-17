@@ -21,11 +21,12 @@
       text-align: left;
     }
     .amount {
-      align-self: flex-end;
-      width: 35%
+      width: 35%;
+      justify-self: end;
     }
     .btn-transfer{
       width: 35%;
+      margin-left: auto;
     }
   }
 }

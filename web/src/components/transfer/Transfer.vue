@@ -4,7 +4,7 @@
         <b-form class="transfer-form mt-4">
             <b-input class="address input-licx" placeholder="Enter reciever's address"></b-input>
             <b-input class="amount input-licx" type="number" placeholder="Enter sum you want to transfer"></b-input>
-            <b-button class="btn-transfer btn-licx">Transfer</b-button>
+            <b-button class="btn-transfer btn-licx mt-3">Transfer</b-button>
         </b-form>
     </div>
 </template>

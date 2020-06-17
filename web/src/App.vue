@@ -33,6 +33,7 @@ body{
       border-radius: 0;
       font-size: 1.3em;
       background: $icx-base;
+      font-weight: 600;
       &:disabled{
         cursor: not-allowed;
         pointer-events: all !important;
