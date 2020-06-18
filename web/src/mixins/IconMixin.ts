@@ -119,14 +119,13 @@ export class IconMixin extends Vue {
             else
                 console.error(err)
         })
-
     }
 
     checkAddress( address: string){
         return IconValidator.isEoaAddress(address)
     }
 
-    async getBalances(address ){
+    async getBalances(address){
         const icxBalance = await this.iconService.getBalance(address).execute();
         const licxBalance = await this.iconService.call(this.buildTransaction({
             write: false,

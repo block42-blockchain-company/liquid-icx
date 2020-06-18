@@ -16,7 +16,6 @@ export default class Swap extends Mixins(IconMixin) {
         "ICX": "LICX"
     };
 
-
     amount = "";
 
     join() {
@@ -26,27 +25,18 @@ export default class Swap extends Mixins(IconMixin) {
             return;
         }
 
-        const tx = this.buildTransaction({
-            write: true,
-            method: "join",
-            steps: 200000,
-            from: this.wallet.address,
-            params: {},
-            value: IconAmount.of(this.amount, IconAmount.Unit.ICX).convertUnit(IconAmount.Unit.LOOP)
+        this.dispatchIconexEvent('REQUEST_JSON-RPC', {
+            jsonrpc: "2.0",
+            method: "icx_sendTransaction",
+            params: IconConverter.toRawTransaction(this.buildTransaction({
+                write: true,
+                method: "join",
+                steps: 200000,
+                from: this.wallet.address,
+                params: {},
+                value: IconAmount.of(this.amount, IconAmount.Unit.ICX).convertUnit(IconAmount.Unit.LOOP)
+            })),
+            id: 50889
         })
-
-        window.dispatchEvent(new CustomEvent('ICONEX_RELAY_REQUEST', {
-            detail: {
-                type: 'REQUEST_JSON-RPC',
-                payload: {
-                    jsonrpc: "2.0",
-                    method: "icx_sendTransaction",
-                    params: IconConverter.toRawTransaction(tx),
-                    id: 50889
-                }
-            }
-        }));
-
-        //this.getBalances(this.wallet.address)
     }
 }

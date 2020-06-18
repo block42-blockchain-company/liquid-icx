@@ -47,6 +47,5 @@ export default class Transfer extends Mixins(IconMixin) {
         }
       }
     }));
-
   }
 }
