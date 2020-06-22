@@ -113,9 +113,8 @@ export class IconMixin extends Vue {
         return await this.iconService.getTransactionResult(hash).execute().then(res => {
             console.log(res)
         }).catch(err => {
-            if(err.includes("Pending transaction")){
+            if(err.includes("Pending transaction"))
                 setTimeout(this.getTxResult.bind(null, hash), 2000)
-            }
             else
                 console.error(err)
         })

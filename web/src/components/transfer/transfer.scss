@@ -11,6 +11,9 @@
     span{
       font-weight: 600;
     }
+    @media (min-width: 300px) and (max-width: 600px) {
+      font-size: 1.7em;
+    }
   }
   .transfer-form{
     display: flex;
@@ -27,6 +30,13 @@
     .btn-transfer{
       width: 35%;
       margin-left: auto;
+      @media (min-width: 300px) and (max-width: 600px) {
+        width: 100%;
+        margin-left: 0;
+      }
     }
+  }
+  @media (min-width: 300px) and (max-width: 600px) {
+    margin-bottom: 5em;
   }
 }

@@ -19,15 +19,18 @@ body{
     text-align: center;
     color: #1BAABA;
 
-    /* Base input class*/
+    /* Base input class */
     .input-licx {
       border: none;
       border-bottom: 2px solid $background-base-washed;
       text-align: center;
       font-size: 1.5em;
+      @media (min-width: 300px) and (max-width: 600px) {
+        font-size: 1em;
+      }
     }
 
-    /*Base btn class*/
+    /* Base btn class */
     .btn-licx {
       border: none;
       border-radius: 0;
@@ -40,6 +43,10 @@ body{
       }
     }
 
+    /* Base media mobile class*/
+    @media (min-width: 300px) and (max-width: 600px) {
+      font-size: .7em;
+    }
   }
 }
 </style>
