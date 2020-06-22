@@ -2,7 +2,7 @@ import {Component, Vue } from "vue-property-decorator";
 import IconService, { IconBuilder, IconValidator } from 'icon-sdk-js'
 import store from "@/store";
 import {mapGetters, mapMutations} from "vuex";
-import logger from "vuex/dist/logger";
+import consts from '../const'
 
 
 @Component({
@@ -15,9 +15,8 @@ import logger from "vuex/dist/logger";
 })
 
 export class IconMixin extends Vue {
-    public readonly provider = new IconService.HttpProvider('https://bicon.net.solidwallet.io/api/v3');
+    public readonly provider = new IconService.HttpProvider(consts.netUrl);
     public readonly iconService = new IconService(this.provider);
-    public readonly licx_score_address = "cxbf9095b8b711068cc5cd1f813b60647e0325408d"
 
     dev!: boolean
     attachedListener!: boolean
@@ -87,7 +86,7 @@ export class IconMixin extends Vue {
         let tx = null;
         if(!_.write){
             tx = new CallBuilder()
-                .to(this.licx_score_address)
+                .to(consts.licxAddress)
                 .method(_.method)
                 .params(_.params)
                 .build()
@@ -95,7 +94,7 @@ export class IconMixin extends Vue {
         else{
             tx = new CallTransactionBuilder()
                 .from(_.from)
-                .to(this.licx_score_address)
+                .to(consts.licxAddress)
                 .value(_.value)
                 .nid(3)
                 .stepLimit(_.steps)
