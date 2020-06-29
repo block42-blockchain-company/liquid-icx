@@ -1,7 +1,7 @@
 from iconservice import *
 from .consts import *
 from .Holder import Holder
-from .interfaces.irc_2_interface import *
+from .irc_2_interface import *
 from .token_fallback_interface import TokenFallbackInterface
 
 
@@ -111,22 +111,29 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def removeHolder(self) -> None:
         self._burn(self.msg.sender, self._balances[self.msg.sender])
         Holder(self.db, self.msg.sender).delete()
-        Holder.remove_from_array(self._holders, self.msg.sender)
+        Holder.remove_from_array(self._holders, self.msg.sender)#
 
+
+    @external(readonly=False)
+    def unlockHolderLicx(self):
+        Holder(self.db, self.msg.sender).unlock(LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
+
+    @external(readonly=True)
+    def getLocked(self) -> list:
+        return list(range(len(Holder(self.db, self.msg.sender).allow_transfer_height)))
 
     @payable
     @external(readonly=False)
     def join(self) -> None:
-        if self.msg.value < 0:
+        if self.msg.value < 0: # minimum 1 icx
             revert("Joining value cannot be less than zero")
 
-        holder = Holder(self.db, self.msg.sender)
         if self.msg.sender not in self._holders:
-            holder.create(self.msg.value, self.block_height,
-                          LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
             self._holders.put(self.msg.sender)
-        else:
-            holder.update(self.msg.value, self.block_height, LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
+
+        Holder(self.db, self.msg.sender).update(self.msg.value,
+                                                self.block_height,
+                                                LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
         self._mint(self.msg.sender, self.msg.value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):

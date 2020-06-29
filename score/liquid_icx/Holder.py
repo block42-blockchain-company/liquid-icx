@@ -14,14 +14,6 @@ class Holder:
         self._join_height = ArrayDB("join_height_" + _address.__str__(), db, value_type=int)
         self._allow_transfer_height = ArrayDB("allow_transfer_" + _address.__str__(), db, value_type=int)
 
-    def create(self, _amount, _block_height, _allow_transfer_height):
-        # Initialisation of a holder, when he joins the first time
-        self._join_values.put(_amount)
-        self._join_height.put(_block_height)
-        self._allow_transfer_height.put(_allow_transfer_height)
-
-        self.locked = _amount
-        # self._transferable.set(0)  # Probably don't need that
 
     def update(self, _amount, _block_height, _allow_transfer_height):
         self._join_values.put(_amount)
@@ -57,7 +49,7 @@ class Holder:
         if self.locked > 0:
             for it in range(len(self._allow_transfer_height)):
                 if next_term > self._allow_transfer_height[it]:
-                    # unluck LICX
+                    # unlock LICX
                     self.locked = self.locked - self._join_values[it]
                     self.transferable = self.transferable + self._join_values[it]
 
@@ -66,6 +58,8 @@ class Holder:
                     self.remove_from_array(self._allow_transfer_height, self._allow_transfer_height[it])
                 else:
                     break
+
+
 
     def canTransfer(self, next_term: int) -> int:
         self.unlock(next_term)

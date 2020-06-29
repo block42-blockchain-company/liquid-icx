@@ -19,7 +19,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
     SCORE_PROJECT= os.path.abspath(os.path.join(DIR_PATH, '..'))
 
-    FORCE_DEPLOY = True  # Change to True, if you want to deploy a new SCORE for testing
+    FORCE_DEPLOY = False  # Change to True, if you want to deploy a new SCORE for testing
 
     GOV_SCORE_ADDRESS = "cx0000000000000000000000000000000000000001"
 
@@ -89,7 +89,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
         from_ = self._wallet.get_address() if "from_" not in kwargs else kwargs["from_"]
         to_ = self._score_address if "to" not in kwargs else kwargs["to"]
-        margin_ = 150000 if "margin" not in kwargs else kwargs["margin"]
+        margin_ = 1500000 if "margin" not in kwargs else kwargs["margin"]
         value_ = 0 if "value" not in kwargs else kwargs["value"]
         method_ = None if "method" not in kwargs else kwargs["method"]
         params_ = {} if "params" not in kwargs else kwargs["params"]
@@ -190,6 +190,7 @@ class LiquidICXTest(IconIntegrateTestBase):
         LiquidICXTest.pp.pprint(tx_result)
 
     def test_remove_holder(self):
+        pass
         tx = self._build_transaction(method="removeHolder")
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
@@ -206,7 +207,17 @@ class LiquidICXTest(IconIntegrateTestBase):
      LiquidICXTest.pp.pprint(tx_result)
 
     def test_random_test(self):
-        tx = self._build_transaction(method="randomTest", type_="write")
+        tx = self._build_transaction(method="unlockHolderLicx", type_="write")
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
+
+    def test_total_supply_no(self):
+     tx = self._build_transaction(method="getLocked", type_="read")
+     tx_result = self.process_call(tx, self._icon_service)
+     LiquidICXTest.pp.pprint(tx_result)
+
+    def test_join_with_transfer(self):
+        self.test_join()
+        self.test_transfer()
+
 
