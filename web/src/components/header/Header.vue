@@ -2,7 +2,6 @@
     <div class="navigation-wrapper">
         <img class="background-shape"  src="../../assets/bg-shape.svg"/>
         <div class="navigation">
-
             <b-navbar toggleable="lg">
                 <!-- Left aligned nav items -->
                 <b-navbar-brand class="ml-5">
