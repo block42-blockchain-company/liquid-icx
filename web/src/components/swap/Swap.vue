@@ -9,7 +9,7 @@
                 <b-form class="mt-5 swap-form container-fluid">
                     <div class="row mb-5">
                         <div class="col-sm-6">
-                            <b-form-input class="amount-input"
+                            <b-form-input class="amount-input input-licx"
                                           type="number"
                                           v-model="amount"
                                           :placeholder="'Amount ' + key"/>
@@ -21,7 +21,7 @@
                         </div>
                     </div>
                     <b-button :disabled="((wallet == null) || (amount === ''))"
-                              class="btn-convert mb-4"
+                              class="btn-convert btn-licx mb-4"
                               @click="join" variant="primary">Convert</b-button>
                 </b-form>
             </b-tab>
