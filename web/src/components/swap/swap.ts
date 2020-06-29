@@ -1,7 +1,7 @@
 import {Component , Mixins} from 'vue-property-decorator'
 import {IconMixin} from "@/mixins/IconMixin";
 import {mapGetters} from "vuex";
-
+import {IconConverter, IconAmount} from 'icon-sdk-js'
 
 @Component({
     components: {},
@@ -16,7 +16,6 @@ export default class Swap extends Mixins(IconMixin) {
         "ICX": "LICX"
     };
 
-
     amount = "";
 
     join() {
@@ -26,13 +25,18 @@ export default class Swap extends Mixins(IconMixin) {
             return;
         }
 
-        const tx = this.buildTransaction({
-            write: true,
-            method: "join",
-            from: this.wallet.address,
-            params: {},
-            value: Number(this.amount)
+        this.dispatchIconexEvent('REQUEST_JSON-RPC', {
+            jsonrpc: "2.0",
+            method: "icx_sendTransaction",
+            params: IconConverter.toRawTransaction(this.buildTransaction({
+                write: true,
+                method: "join",
+                steps: 200000,
+                from: this.wallet.address,
+                params: {},
+                value: IconAmount.of(this.amount, IconAmount.Unit.ICX).convertUnit(IconAmount.Unit.LOOP)
+            })),
+            id: 50889
         })
-
     }
 }
