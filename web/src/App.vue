@@ -1,7 +1,9 @@
 <template>
-  <div id="app">
-    <Header />
-    <router-view/>
+  <div id="licx-app">
+    <div id="main-content">
+      <Header />
+      <router-view/>
+    </div>
     <Footer />
   </div>
 </template>
@@ -31,14 +33,17 @@ export default class Home extends Vue {
 
 body{
   margin: 0;
-  #app {
+  #licx-app {
     /*Base styling*/
     font-family: 'Open Sans', Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-align: center;
     color: #1BAABA;
-
+    height: 100vh;
+    #main-content{
+      padding-bottom: 2.5rem;
+    }
     /* Base input class */
     .input-licx {
       border: none;
