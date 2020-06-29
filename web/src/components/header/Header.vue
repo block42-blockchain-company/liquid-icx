@@ -1,6 +1,6 @@
 <template>
     <div class="navigation-wrapper">
-        <img href="" class="background-shape"  src="../../assets/bg-shape.svg"/>
+        <img class="background-shape"  src="../../assets/bg-shape.svg"/>
         <div class="navigation">
             <b-navbar toggleable="lg">
                 <!-- Left aligned nav items -->
