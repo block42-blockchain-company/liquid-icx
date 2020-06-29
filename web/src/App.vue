@@ -43,7 +43,7 @@ body{
     color: #1BAABA;
     min-height: 100vh;
     #main-content{
-      padding-bottom: 2.5rem;
+      padding-bottom: 2.5em;
     }
     /* Base input class */
     .input-licx {
@@ -68,6 +68,7 @@ body{
         pointer-events: all !important;
       }
     }
+
 
     /* Base media mobile class*/
     @media (min-width: 300px) and (max-width: 600px) {
