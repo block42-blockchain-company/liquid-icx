@@ -35,12 +35,13 @@ body{
   margin: 0;
   #licx-app {
     /*Base styling*/
+    position: relative;
     font-family: 'Open Sans', Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-align: center;
     color: #1BAABA;
-    height: 100vh;
+    min-height: 100vh;
     #main-content{
       padding-bottom: 2.5rem;
     }
