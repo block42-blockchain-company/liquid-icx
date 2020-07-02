@@ -1,6 +1,5 @@
 <template>
   <div class="home">
-      <Header />
       <div class="main-content container-fluid">
           <div class="row d-flex justify-content-between">
               <div class="col-lg-8 p-0">

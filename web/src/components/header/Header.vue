@@ -5,7 +5,9 @@
             <b-navbar toggleable="lg">
                 <!-- Left aligned nav items -->
                 <b-navbar-brand class="ml-5">
-                    <img class="licx-logo" src="../../assets/LICX-logo.svg" alt="logo"/>
+                    <router-link to="/">
+                        <img class="licx-logo" src="../../assets/LICX-logo.svg" alt="logo"/>
+                    </router-link>
                 </b-navbar-brand>
                 <!-- Right aligned nav items -->
                 <IconWallet></IconWallet>
