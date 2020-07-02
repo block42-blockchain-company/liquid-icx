@@ -1,0 +1,19 @@
+.footer{
+  position: absolute;
+  bottom: 0;
+  height: 2.5em;
+
+  font-size: 1.4em;
+  font-weight: 300;
+  color: black;
+  .link{
+    text-decoration: underline;
+    color: rgba(182, 202, 204, 1);
+  }
+  .general-info{
+
+    span{
+      font-weight: 600;
+    }
+  }
+}

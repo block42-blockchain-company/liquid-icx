@@ -5,5 +5,6 @@ module.exports = {
                 prependData: `@import "@/styles/variables.scss";`
             }
         }
-    }
+    },
+    outputDir: "deploy/dist"
 };
