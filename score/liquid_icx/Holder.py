@@ -4,7 +4,7 @@ from iconservice import *
 class Holder:
     def __init__(self, db: IconScoreDatabase, _address: Address):
         # How much is user allowed to transfer
-        # Sum of these two variables should be equal to LiquidICX._balance[user_adress]
+        # Sum of these two variables should be equal to LiquidICX._balance[user_address]
         # After two terms were passed, locked becomes transferable
         self._transferable = VarDB("transferable_" + _address.__str__(), db, value_type=int)
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
@@ -46,23 +46,27 @@ class Holder:
         self.locked = 0
         self.transferable = 0
 
-    def unlock(self, next_term: int):
+    def unlock(self, next_term: int) -> int:
+        '''
+        Unlocks user's LICX and removes entry from the _join_values, join_height, _allow_transfer_height
+        :param next_term: Block height of next term
+        :return: Amount of unlocked LICX
+        '''
+        unlocked = 0
         if self.locked > 0:
-            it = 0 # probably don't need that
             while self._allow_transfer_height:
-                if it > len(self.allow_transfer_height):  # probably don't need that
-                    break
                 if next_term > self._allow_transfer_height[0]:  # check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
                     self.transferable = self.transferable + self._join_values[0]
 
+                    unlocked += self._join_values[0]
+
                     self.remove_from_array(self._join_values, self._join_values[0])
                     self.remove_from_array(self._join_height, self._join_height[0])
                     self.remove_from_array(self._allow_transfer_height, self._allow_transfer_height[0])
-
-                    it += 1 # probably don't need that
                 else:
                     break
+        return unlocked
 
     def canTransfer(self, next_term: int) -> int:
         self.unlock(next_term)
