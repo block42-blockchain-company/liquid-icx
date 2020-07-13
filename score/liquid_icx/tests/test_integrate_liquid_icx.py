@@ -29,7 +29,7 @@ class LiquidICXTest(IconIntegrateTestBase):
     LOCAL_SCORE_ADDRESS = "cxf56bb59257b412183c6ed70d7a4ed371306a98d9"
 
     YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    YEUOIDO_SCORE_ADDRESS = "cxbf9095b8b711068cc5cd1f813b60647e0325408d"
+    YEUOIDO_SCORE_ADDRESS = "cx919e2e0ffa2d2ebfbf37f21e9c3a6aa7def14078"
 
     pp = pprint.PrettyPrinter(indent=4)
 
@@ -89,7 +89,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
         from_ = self._wallet.get_address() if "from_" not in kwargs else kwargs["from_"]
         to_ = self._score_address if "to" not in kwargs else kwargs["to"]
-        margin_ = 1500000 if "margin" not in kwargs else kwargs["margin"]
+        margin_ = 2500000 if "margin" not in kwargs else kwargs["margin"]
         value_ = 0 if "value" not in kwargs else kwargs["value"]
         method_ = None if "method" not in kwargs else kwargs["method"]
         params_ = {} if "params" not in kwargs else kwargs["params"]
@@ -149,7 +149,7 @@ class LiquidICXTest(IconIntegrateTestBase):
     def test_get_next_prep_term(self):
         tx = self._build_transaction(method="nextTerm", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(int(tx_result, 16))
+        LiquidICXTest.pp.pprint(tx_result)
 
     def test_join(self):
         tx = self._build_transaction(method="join", value=1)
@@ -202,22 +202,14 @@ class LiquidICXTest(IconIntegrateTestBase):
         LiquidICXTest.pp.pprint(tx_result)
 
     def test_total_supply(self):
-     tx = self._build_transaction(method="totalSupply", type_="read")
-     tx_result = self.process_call(tx, self._icon_service)
-     LiquidICXTest.pp.pprint(tx_result)
+        tx = self._build_transaction(method="totalSupply", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
 
-    def test_random_test(self):
-        tx = self._build_transaction(method="unlockHolderLicx", type_="write")
+    def test_unlock_holder_licx(self):
+        tx = self._build_transaction(method="unlockHolderLicx", type_="write", margin=5000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
 
-    def test_total_supply_no(self):
-     tx = self._build_transaction(method="getLocked", type_="read")
-     tx_result = self.process_call(tx, self._icon_service)
-     LiquidICXTest.pp.pprint(tx_result)
-
-    def test_join_with_transfer(self):
-        self.test_join()
-        self.test_transfer()
 
 

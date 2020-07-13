@@ -149,7 +149,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         sender = Holder(self.db, _from)
         receiver = Holder(self.db, _to)
 
-        if not sender.canTransfer(LiquidICX._NEXT_TERM_HEIGHT):
+        if len(sender.join_values):
+            sender.unlock(LiquidICX._NEXT_TERM_HEIGHT)
+
+        if not sender.transferable:
             revert("LiquidICX: You don't have any transferable LICX yet.")
 
         sender.transferable = sender.transferable - _value

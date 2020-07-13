@@ -55,7 +55,7 @@ class Holder:
         unlocked = 0
         if self.locked > 0:
             while self._allow_transfer_height:
-                if next_term > self._allow_transfer_height[0]:  # check and remove the first element only
+                if next_term > self._allow_transfer_height[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
                     self.transferable = self.transferable + self._join_values[0]
 
