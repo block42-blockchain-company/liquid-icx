@@ -15,7 +15,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     _NEXT_TERM_HEIGHT = 0  # Temp
 
     @eventlog(indexed=2)
-    def Debug(self, int1: int, int2: int):
+    def DebugInt(self, int1: int, int2: int):
         pass
 
     @eventlog(indexed=1)
@@ -111,12 +111,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def removeHolder(self) -> None:
         self._burn(self.msg.sender, self._balances[self.msg.sender])
         Holder(self.db, self.msg.sender).delete()
-        Holder.remove_from_array(self._holders, self.msg.sender)#
-
+        Holder.remove_from_array(self._holders, self.msg.sender)
 
     @external(readonly=False)
-    def unlockHolderLicx(self):
-        Holder(self.db, self.msg.sender).unlock(LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
+    def unlockHolderLicx(self) -> int:
+        Holder(self.db, self.msg.sender).unlock(LiquidICX._NEXT_TERM_HEIGHT)
+
 
     @external(readonly=True)
     def getLocked(self) -> list:
@@ -135,6 +135,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                                                 self.block_height,
                                                 LiquidICX._NEXT_TERM_HEIGHT + TERM_LENGTH)
         self._mint(self.msg.sender, self.msg.value)
+        self.Join(self.msg.sender, self.msg.value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         # Checks the sending value and balance.

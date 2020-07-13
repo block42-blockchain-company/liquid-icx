@@ -14,8 +14,9 @@ class Holder:
         self._join_height = ArrayDB("join_height_" + _address.__str__(), db, value_type=int)
         self._allow_transfer_height = ArrayDB("allow_transfer_" + _address.__str__(), db, value_type=int)
 
-
     def update(self, _amount, _block_height, _allow_transfer_height):
+        if len(self._join_values) > 10:
+            revert("LiquidICX: You can not join as right now. This is considered as spam")
         self._join_values.put(_amount)
         self._join_height.put(_block_height)
         self._allow_transfer_height.put(_allow_transfer_height)
@@ -47,19 +48,21 @@ class Holder:
 
     def unlock(self, next_term: int):
         if self.locked > 0:
-            for it in range(len(self._allow_transfer_height)):
-                if next_term > self._allow_transfer_height[it]:
-                    # unlock LICX
-                    self.locked = self.locked - self._join_values[it]
-                    self.transferable = self.transferable + self._join_values[it]
+            it = 0 # probably don't need that
+            while self._allow_transfer_height:
+                if it > len(self.allow_transfer_height):  # probably don't need that
+                    break
+                if next_term > self._allow_transfer_height[0]:  # check and remove the first element only
+                    self.locked = self.locked - self._join_values[0]
+                    self.transferable = self.transferable + self._join_values[0]
 
-                    self.remove_from_array(self._join_values, self._join_values[it])
-                    self.remove_from_array(self._join_height, self._join_height[it])
-                    self.remove_from_array(self._allow_transfer_height, self._allow_transfer_height[it])
+                    self.remove_from_array(self._join_values, self._join_values[0])
+                    self.remove_from_array(self._join_height, self._join_height[0])
+                    self.remove_from_array(self._allow_transfer_height, self._allow_transfer_height[0])
+
+                    it += 1 # probably don't need that
                 else:
                     break
-
-
 
     def canTransfer(self, next_term: int) -> int:
         self.unlock(next_term)
