@@ -1,15 +1,42 @@
-import { Vue, Component } from 'vue-property-decorator'
-
+import {Component , Mixins} from 'vue-property-decorator'
+import {IconMixin} from "@/mixins/IconMixin";
+import {mapGetters} from "vuex";
+import {IconConverter, IconAmount} from 'icon-sdk-js'
 
 @Component({
-    components: {
-    }
+    components: {},
+    computed: mapGetters({ wallet : 'getWallet'}),
 })
-export default class Swap extends Vue
-{
-    readonly pairs = {"LICX": "ICX",
-                       "ICX": "LICX"}
+export default class Swap extends Mixins(IconMixin) {
 
-    amount= ""
+    wallet !: Record<string, any> | null
 
+    readonly pairs = {
+        "LICX": "ICX",
+        "ICX": "LICX"
+    };
+
+    amount = "";
+
+    join() {
+        if(!this.wallet) return;
+        if(this.wallet.icxBalance == 0){
+            alert("Buy some icx first");
+            return;
+        }
+
+        this.dispatchIconexEvent('REQUEST_JSON-RPC', {
+            jsonrpc: "2.0",
+            method: "icx_sendTransaction",
+            params: IconConverter.toRawTransaction(this.buildTransaction({
+                write: true,
+                method: "join",
+                steps: 200000,
+                from: this.wallet.address,
+                params: {},
+                value: IconAmount.of(this.amount, IconAmount.Unit.ICX).convertUnit(IconAmount.Unit.LOOP)
+            })),
+            id: 50889
+        })
+    }
 }
