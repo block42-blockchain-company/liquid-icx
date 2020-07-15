@@ -14,14 +14,21 @@ class Holder:
         self._join_height = ArrayDB("join_height_" + _address.__str__(), db, value_type=int)
         self._allow_transfer_height = ArrayDB("allow_transfer_" + _address.__str__(), db, value_type=int)
 
-    def update(self, _amount, _block_height, _allow_transfer_height):
+        # Store in which holders array you can find particular holder
+        self._holders_index = VarDB("holders_index" + _address.__str__(), db, value_type=int)
+
+    def update(self, join_details: dict):
         if len(self._join_values) > 10:
             revert("LiquidICX: You can not join as right now. This is considered as spam")
-        self._join_values.put(_amount)
-        self._join_height.put(_block_height)
-        self._allow_transfer_height.put(_allow_transfer_height)
 
-        self.locked = self.locked + _amount
+        if join_details["holders_index"] is not None:
+            self._holders_index = join_details["holders_index"]
+
+        self._join_values.put(join_details["value"])
+        self._join_height.put(join_details["block_height"])
+        self._allow_transfer_height.put(join_details["allow_transfer_height"])
+
+        self.locked = self.locked + join_details["value"]
 
     @staticmethod
     def remove_from_array(array: ArrayDB, el) -> None:
@@ -43,15 +50,16 @@ class Holder:
             self._join_height.pop()
             self._allow_transfer_height.pop()
 
+        self.holders_index = 0
         self.locked = 0
         self.transferable = 0
 
     def unlock(self, next_term: int) -> int:
-        '''
+        """
         Unlocks user's LICX and removes entry from the _join_values, join_height, _allow_transfer_height
         :param next_term: Block height of next term
-        :return: Amount of unlocked LICX
-        '''
+        :return: Amount of new unlocked LICX
+        """
         unlocked = 0
         if self.locked > 0:
             while self._allow_transfer_height:
@@ -89,6 +97,14 @@ class Holder:
         self._locked.set(value)
 
     @property
+    def holders_index(self) -> int:
+        return self._holders_index.get()
+
+    @holders_index.setter
+    def holders_index(self, value):
+        self._holders_index.set(value)
+
+    @property
     def join_values(self) -> ArrayDB:
         return self._join_values
 
@@ -102,9 +118,10 @@ class Holder:
 
     def serialize(self) -> dict:
         return {
-            "transferable": self._transferable.get(),
-            "locked": self._locked.get(),
-            "join_values": list(self._join_values),
-            "join_height": list(self._join_height),
-            "allow_transfer_height": list(self._allow_transfer_height)
+            "transferable": self.transferable,
+            "locked": self.locked,
+            "join_values": list(self.join_values),
+            "join_height": list(self.join_height),
+            "allow_transfer_height": list(self._allow_transfer_height),
+            "hodlers_index": self.holders_index
         }
