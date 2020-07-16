@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pprint
+from concurrent.futures.thread import ThreadPoolExecutor
 
 from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.builder.transaction_builder import DeployTransactionBuilder, CallTransactionBuilder, TransactionBuilder
@@ -17,19 +18,19 @@ DIR_PATH = os.path.abspath(os.path.dirname(__file__))
 
 class LiquidICXTest(IconIntegrateTestBase):
 
-    SCORE_PROJECT= os.path.abspath(os.path.join(DIR_PATH, '..'))
+    SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
 
     FORCE_DEPLOY = False  # Change to True, if you want to deploy a new SCORE for testing
 
     GOV_SCORE_ADDRESS = "cx0000000000000000000000000000000000000001"
 
-    LOCAL_NETWORK_TEST = False
+    LOCAL_NETWORK_TEST = True
 
     LOCAL_TEST_HTTP_ENDPOINT_URI_V3 = "http://127.0.0.1:9000/api/v3"
-    LOCAL_SCORE_ADDRESS = "cxf56bb59257b412183c6ed70d7a4ed371306a98d9"
+    LOCAL_SCORE_ADDRESS = "cx77c06488a0b5567e881585d9336953bad22193ea"
 
     YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    YEUOIDO_SCORE_ADDRESS = "cx919e2e0ffa2d2ebfbf37f21e9c3a6aa7def14078"
+    YEUOIDO_SCORE_ADDRESS = "cxd3a233d7a77e7a438a2ea4cfe485219c8a73ff2a"
 
     pp = pprint.PrettyPrinter(indent=4)
 
@@ -115,9 +116,9 @@ class LiquidICXTest(IconIntegrateTestBase):
                 .build()
         elif type_ == "transfer":
             steps_ = self._estimate_steps(margin_)
-            tx = TransactionBuilder()\
-                .from_(from_)\
-                .to(to_)\
+            tx = TransactionBuilder() \
+                .from_(from_) \
+                .to(to_) \
                 .value(value_) \
                 .step_limit(steps_) \
                 .nid(3) \
@@ -130,14 +131,20 @@ class LiquidICXTest(IconIntegrateTestBase):
                                        to=SCORE_INSTALL_ADDRESS,
                                        method="getIISSInfo",
                                        params={})
-        result = self._icon_service.call(call)
-        # LiquidICXTest.pp.pprint(result)
+        result = dict()
+        if LiquidICXTest.LOCAL_NETWORK_TEST:
+            self._icon_service = IconService(HTTPProvider(LiquidICXTest.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
+            result = self._icon_service.call(call)
+            self._icon_service = IconService(HTTPProvider(LiquidICXTest.LOCAL_TEST_HTTP_ENDPOINT_URI_V3))
+        else:
+            result = self._icon_service.call(call)
         return result['nextPRepTerm']
 
     def test_score_update(self):
         # update SCORE
-        tx_result = self._deploy_score(self._score_address)
-        self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=LiquidICXTest.pp.pformat(tx_result))
+        if not LiquidICXTest.FORCE_DEPLOY:
+            tx_result = self._deploy_score(self._score_address)
+            self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=LiquidICXTest.pp.pformat(tx_result))
 
     def test_set_next_prep_term(self):
         paras = {"_next_term": int(self._get_next_prep_term_IISS(), 16) + (43120 * 2)}
@@ -155,19 +162,27 @@ class LiquidICXTest(IconIntegrateTestBase):
         tx = self._build_transaction(method="join", value=1)
         signed_transaction = SignedTransaction(tx, self._wallet)
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
 
-    def test_10_join(self):
-        for it in range(0, 10):
-            # create a wallet and transfer 0.1 ICX to it
-            wallet = KeyWallet.create()
-            tx = self._build_transaction(type_="transfer", to=wallet.get_address(), value=10 ** 17)
-            tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-            self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
-            # make a join request
-            tx = self._build_transaction(method="join", from_=wallet.get_address(), params={}, value=10**16)
-            tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
-            self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
+    def _join_with_new_wallet(self):
+        # create a wallet and transfer 0.1 ICX to it
+        wallet = KeyWallet.create()
+        tx = self._build_transaction(type_="transfer", to=wallet.get_address(), value=10 ** 17)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
+        # make a join request
+        tx = self._build_transaction(method="join", from_=wallet.get_address(), params={}, value=10 ** 16)
+        tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
+        self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
+        return tx_result
+
+    def test_100_join(self):
+        with ThreadPoolExecutor(max_workers=100) as pool:
+            result = []
+            for it in range(0, 10000):
+                tx_res = pool.submit(self._join_with_new_wallet)
+                result.append(tx_res)
 
     def test_get_holders(self):
         tx = self._build_transaction(method="getHolders", type_="read")
@@ -212,4 +227,12 @@ class LiquidICXTest(IconIntegrateTestBase):
         LiquidICXTest.pp.pprint(tx_result)
 
 
+    def test_get_arrays_count(self):
+        tx = self._build_transaction(method="arraysCounts", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
 
+    def test_test(self):
+        tx = self._build_transaction(method="test", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
