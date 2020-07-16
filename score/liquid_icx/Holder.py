@@ -21,8 +21,8 @@ class Holder:
         if len(self._join_values) > 10:
             revert("LiquidICX: You can not join as right now. This is considered as spam")
 
-        if join_details["holders_index"] is not None:
-            self._holders_index = join_details["holders_index"]
+        if join_details["holder_index"] is not None:
+            self.holders_index = join_details["holder_index"]
 
         self._join_values.put(join_details["value"])
         self._join_height.put(join_details["block_height"])
@@ -123,5 +123,5 @@ class Holder:
             "join_values": list(self.join_values),
             "join_height": list(self.join_height),
             "allow_transfer_height": list(self._allow_transfer_height),
-            "hodlers_index": self.holders_index
+            "holders_index": self.holders_index
         }

@@ -51,8 +51,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._total_supply.set(total_supply)
         self._decimals.set(_decimals)
-        self._balances[self.msg.sender] = total_supply
-        self.add_address_to_holders_array()
         self._arrays_count.set(1)
 
         LiquidICX._NEXT_TERM_HEIGHT = _next_term_height
@@ -148,7 +146,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self.msg.sender not in self._balances:
             self.add_address_to_holders_array()
             join_details["holder_index"] = self._arrays_count.get()
-            self.Debug("New user added")
+            self.Debug("New user added" + str(self._arrays_count.get()))
 
         Holder(self.db, self.msg.sender).update(join_details)
 
@@ -159,11 +157,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if address is None:
             address = self.msg.sender
 
-        array_db = ArrayDB("holders_array_" + str(self._arrays_count), self.db, value_type=Address)
+        array_db = ArrayDB("holders_array_" + str(self._arrays_count.get()), self.db, value_type=Address)
 
         if len(array_db) >= 1000:
             self._arrays_count.set(self._arrays_count.get() + 1)
-            array_db = ArrayDB("holders_array_" + str(self._arrays_count), self.db, value_type=Address)
+            array_db = ArrayDB("holders_array_" + str(self._arrays_count.get()), self.db, value_type=Address)
 
         array_db.put(address)
 
