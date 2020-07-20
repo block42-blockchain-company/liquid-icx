@@ -3,6 +3,7 @@ from .consts import *
 from .Holder import Holder
 from .irc_2_interface import *
 from .token_fallback_interface import TokenFallbackInterface
+from .scorelib.linked_list import *
 
 
 class FakeSystemContractInterface(InterfaceScore):
@@ -14,6 +15,9 @@ class FakeSystemContractInterface(InterfaceScore):
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
     _NEXT_TERM_HEIGHT = 0  # Temp
 
+    # ================================================
+    #  Event logs
+    # ================================================
     @eventlog(indexed=2)
     def DebugInt(self, int1: int, int2: int):
         pass
@@ -30,6 +34,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def Transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         pass
 
+    # ================================================
+    #  Initialization
+    # ================================================
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
         self._total_supply = VarDB('total_supply', db, value_type=int)
@@ -37,6 +44,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._balances = DictDB('balances', db, value_type=int)
 
         self._arrays_count = VarDB("_arrays_count", db, value_type=int)
+
+        self._holders = LinkedListDB(Holder, db, )
 
     def on_install(self, _next_term_height: int, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
@@ -60,6 +69,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         LiquidICX._NEXT_TERM_HEIGHT = _next_term_height
         Logger.debug(f'on_update: new_next_term_hegiht={_next_term_height}', TAG)
 
+    # ================================================
+    #  External methods
+    # ================================================
     @external(readonly=True)
     def nextTerm(self) -> int:
         return LiquidICX._NEXT_TERM_HEIGHT
@@ -144,7 +156,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         }
 
         if self.msg.sender not in self._balances:
-            self.add_address_to_holders_array()
+            self._add_address_to_holders_array()
             join_details["holder_index"] = self._arrays_count.get()
             self.Debug("New user added" + str(self._arrays_count.get()))
 
@@ -153,7 +165,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._mint(self.msg.sender, self.msg.value)
         self.Join(self.msg.sender, self.msg.value)
 
-    def add_address_to_holders_array(self, address=None):
+    # ================================================
+    #  External methods
+    # ================================================
+    def _add_address_to_holders_array(self, address=None):
         if address is None:
             address = self.msg.sender
 
@@ -191,7 +206,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             pass
 
         if _to not in self._balances:
-            self.add_address_to_holders_array(_to)
+            self._add_address_to_holders_array(_to)
 
         receiver.transferable = receiver.transferable + _value
         self._balances[_to] = self._balances[_to] + _value
