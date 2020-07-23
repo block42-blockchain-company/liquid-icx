@@ -1,4 +1,10 @@
-from iconservice import *
+from .liquid_icx import *
+
+
+class SystemContractInterface(InterfaceScore):
+    @interface
+    def getIISSInfo(self):
+        pass
 
 
 class Holder:
@@ -14,21 +20,18 @@ class Holder:
         self._join_height = ArrayDB("join_height_" + _address.__str__(), db, value_type=int)
         self._allow_transfer_height = ArrayDB("allow_transfer_" + _address.__str__(), db, value_type=int)
 
-        # Store in which holders array you can find particular holder
-        self._holders_index = VarDB("holders_index" + _address.__str__(), db, value_type=int)
-
-    def update(self, join_details: dict):
+    def update(self, join_amount: int):
         if len(self._join_values) > 10:
             revert("LiquidICX: You can not join as right now. This is considered as spam")
 
-        if join_details["holder_index"] is not None:
-            self.holders_index = join_details["holder_index"]
+        system_score = IconScoreBase.create_interface_score(ZERO_SCORE_ADDRESS, SystemContractInterface)
+        iiss_info = system_score.getIISSInfo()
 
-        self._join_values.put(join_details["value"])
-        self._join_height.put(join_details["block_height"])
-        self._allow_transfer_height.put(join_details["allow_transfer_height"])
+        self._join_values.put(join_amount)
+        self._join_height.put(iiss_info["blockHeight"])
+        self._allow_transfer_height.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
 
-        self.locked = self.locked + join_details["value"]
+        self.locked = self.locked + join_amount
 
     @staticmethod
     def remove_from_array(array: ArrayDB, el) -> None:
@@ -50,18 +53,17 @@ class Holder:
             self._join_height.pop()
             self._allow_transfer_height.pop()
 
-        self.holders_index = 0
         self.locked = 0
         self.transferable = 0
 
-    def unlock(self, next_term: int) -> int:
+    def unlock(self, ) -> int:
         """
         Unlocks user's LICX and removes entry from the _join_values, join_height, _allow_transfer_height
-        :param next_term: Block height of next term
         :return: Amount of new unlocked LICX
         """
         unlocked = 0
         if self.locked > 0:
+            next_term = LiquidICX.IISSSInfo()["nextPRepTerm"]
             while self._allow_transfer_height:
                 if next_term > self._allow_transfer_height[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
@@ -77,7 +79,7 @@ class Holder:
         return unlocked
 
     def canTransfer(self, next_term: int) -> int:
-        self.unlock(next_term)
+        self.unlock()
         return self.transferable
 
     @property
@@ -95,14 +97,6 @@ class Holder:
     @locked.setter
     def locked(self, value):
         self._locked.set(value)
-
-    @property
-    def holders_index(self) -> int:
-        return self._holders_index.get()
-
-    @holders_index.setter
-    def holders_index(self, value):
-        self._holders_index.set(value)
 
     @property
     def join_values(self) -> ArrayDB:
@@ -123,5 +117,4 @@ class Holder:
             "join_values": list(self.join_values),
             "join_height": list(self.join_height),
             "allow_transfer_height": list(self._allow_transfer_height),
-            "holders_index": self.holders_index
         }

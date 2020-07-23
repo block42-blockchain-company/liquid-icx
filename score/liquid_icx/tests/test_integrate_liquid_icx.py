@@ -17,20 +17,19 @@ DIR_PATH = os.path.abspath(os.path.dirname(__file__))
 
 
 class LiquidICXTest(IconIntegrateTestBase):
-
     SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
 
     FORCE_DEPLOY = False  # Change to True, if you want to deploy a new SCORE for testing
 
     GOV_SCORE_ADDRESS = "cx0000000000000000000000000000000000000001"
 
-    LOCAL_NETWORK_TEST = True
+    LOCAL_NETWORK_TEST = False
 
     LOCAL_TEST_HTTP_ENDPOINT_URI_V3 = "http://127.0.0.1:9000/api/v3"
     LOCAL_SCORE_ADDRESS = "cx77c06488a0b5567e881585d9336953bad22193ea"
 
     YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    YEUOIDO_SCORE_ADDRESS = "cxd3a233d7a77e7a438a2ea4cfe485219c8a73ff2a"
+    YEUOIDO_SCORE_ADDRESS = "cxfc51501665c72c26cb01ae009bbd1eddf0c79e4b"
 
     pp = pprint.PrettyPrinter(indent=4)
 
@@ -62,7 +61,7 @@ class LiquidICXTest(IconIntegrateTestBase):
             .nonce(100) \
             .content_type("application/zip") \
             .content(score_content_bytes) \
-            .params({"_next_term_height": self._get_next_prep_term_IISS()}) \
+            .params({}) \
             .build()
 
         # Returns the signed transaction object having a signature
@@ -177,18 +176,23 @@ class LiquidICXTest(IconIntegrateTestBase):
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
         return tx_result
 
-    def test_100_join(self):
+    def test_10000_join(self):
+        result = []
         with ThreadPoolExecutor(max_workers=100) as pool:
-            result = []
             for it in range(0, 10000):
                 tx_res = pool.submit(self._join_with_new_wallet)
                 result.append(tx_res)
+        self.assertEqual(10, len(self.test_get_holders()))
+
+    def test_join_with_new_wallet(self):
+        self._join_with_new_wallet()
 
     def test_get_holders(self):
         tx = self._build_transaction(method="getHolders", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
-        # self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
+        self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
+        return tx_result
 
     def test_get_holder(self):
         tx = self._build_transaction(method="getHolder", type_="read")
@@ -226,13 +230,12 @@ class LiquidICXTest(IconIntegrateTestBase):
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
 
-
     def test_get_arrays_count(self):
         tx = self._build_transaction(method="arraysCounts", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
 
     def test_test(self):
-        tx = self._build_transaction(method="test", type_="read")
+        tx = self._build_transaction(method="blabla", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
