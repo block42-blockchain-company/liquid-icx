@@ -12,13 +12,13 @@ class Holder:
         # How much is user allowed to transfer
         # Sum of these two variables should be equal to LiquidICX._balance[user_address]
         # After two terms were passed, locked becomes transferable
-        self._transferable = VarDB("transferable_" + _address.__str__(), db, value_type=int)
+        self._transferable = VarDB("transferable_" + str(_address), db, value_type=int)
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
 
         # Presents how much user deposited to SCORE in chronological order
-        self._join_values = ArrayDB("join_values_" + _address.__str__(), db, value_type=int)
-        self._join_height = ArrayDB("join_height_" + _address.__str__(), db, value_type=int)
-        self._allow_transfer_height = ArrayDB("allow_transfer_" + _address.__str__(), db, value_type=int)
+        self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
+        self._join_height = ArrayDB("join_height_" + str(_address), db, value_type=int)
+        self._allow_transfer_height = ArrayDB("allow_transfer_" + str(_address), db, value_type=int)
 
     def update(self, join_amount: int):
         if len(self._join_values) > 10:

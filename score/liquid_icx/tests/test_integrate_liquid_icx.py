@@ -29,7 +29,8 @@ class LiquidICXTest(IconIntegrateTestBase):
     LOCAL_SCORE_ADDRESS = "cx77c06488a0b5567e881585d9336953bad22193ea"
 
     YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    YEUOIDO_SCORE_ADDRESS = "cxfc51501665c72c26cb01ae009bbd1eddf0c79e4b"
+    #YEUOIDO_SCORE_ADDRESS = "cxfc51501665c72c26cb01ae009bbd1eddf0c79e4b"
+    YEUOIDO_SCORE_ADDRESS = "cx3b51da5f05f389859efae83b1d3c1672055985b1"
 
     pp = pprint.PrettyPrinter(indent=4)
 
@@ -125,7 +126,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
         return tx
 
-    def _get_next_prep_term_IISS(self):
+    def test_get_next_prep_term_IISS(self):
         call = self._build_transaction(type_="read",
                                        to=SCORE_INSTALL_ADDRESS,
                                        method="getIISSInfo",
@@ -191,7 +192,7 @@ class LiquidICXTest(IconIntegrateTestBase):
         tx = self._build_transaction(method="getHolders", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
-        self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
+        # self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
         return tx_result
 
     def test_get_holder(self):
@@ -236,6 +237,7 @@ class LiquidICXTest(IconIntegrateTestBase):
         LiquidICXTest.pp.pprint(tx_result)
 
     def test_test(self):
-        tx = self._build_transaction(method="blabla", type_="read")
+        paras = {"address": "hx16668be6daa4bfa22af768270d51aec9d37fa227"}
+        tx = self._build_transaction(method="selectFromHolders", type_="read", params=paras)
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)

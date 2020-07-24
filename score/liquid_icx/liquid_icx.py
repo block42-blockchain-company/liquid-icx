@@ -42,7 +42,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._decimals = VarDB('decimals', db, value_type=int)
         self._balances = DictDB('balances', db, value_type=int)
 
-        self._holders = LinkedListDB("holders_list", db, Address)
+        self._holders = LinkedListDB("holders_list", db, str)
 
     def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
@@ -98,7 +98,19 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @external(readonly=True)
     def getHolders(self) -> list:
-        return self._holders.select(0)
+        result = []
+        for item in self._holders:
+            result.append(str(item))
+        return result
+
+    @staticmethod
+    def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
+        node_id, value = item
+        return value == kwargs['match']
+
+    @external(readonly=True)
+    def selectFromHolders(self, address: str) -> list:
+        return self._holders.select(0, self.linkedlistdb_sentinel, match=address)
 
     @external(readonly=False)
     def removeHolder(self) -> None:
@@ -107,7 +119,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # Holder.remove_from_array(self._holders, self.msg.sender)
 
     @external(readonly=False)
-    def unlockHolderLicx(self) -> int:
+    def unlockHolderLicx(self):
         Holder(self.db, self.msg.sender).unlock()
 
     @external(readonly=True)
@@ -121,7 +133,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("Joining value cannot be less than zero")
 
         if self.msg.sender not in self._balances:
-            self._holders.append(self.msg.sender)
+            self._holders.append(str(self.msg.sender))
             self.Debug(str(Address))
 
         Holder(self.db, self.msg.sender).update(self.msg.value)
