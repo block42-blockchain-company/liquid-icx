@@ -1,10 +1,5 @@
 from .liquid_icx import *
-
-
-class SystemContractInterface(InterfaceScore):
-    @interface
-    def getIISSInfo(self):
-        pass
+from .interfaces.system_score_interface import InterfaceSystemScore
 
 
 class Holder:
@@ -24,28 +19,13 @@ class Holder:
         if len(self._join_values) > 10:
             revert("LiquidICX: You can not join as right now. This is considered as spam")
 
-        system_score = IconScoreBase.create_interface_score(ZERO_SCORE_ADDRESS, SystemContractInterface)
-        iiss_info = system_score.getIISSInfo()
+        iiss_info = Utils.system_score_interface().getIISSInfo()
 
         self._join_values.put(join_amount)
         self._join_height.put(iiss_info["blockHeight"])
         self._allow_transfer_height.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
 
         self.locked = self.locked + join_amount
-
-    @staticmethod
-    def remove_from_array(array: ArrayDB, el) -> None:
-        temp = []
-        # find that element and remove it
-        while array:
-            current = array.pop()
-            if current == el:
-                break
-            else:
-                temp.append(current)
-        # append temp back to arrayDB
-        while temp:
-            array.put(temp.pop())
 
     def delete(self):
         while self._join_values:
@@ -63,7 +43,7 @@ class Holder:
         """
         unlocked = 0
         if self.locked > 0:
-            next_term = LiquidICX.IISSSInfo()["nextPRepTerm"]
+            next_term = Utils.system_score_interface().getIISSInfo()["nextPRepTerm"]
             while self._allow_transfer_height:
                 if next_term > self._allow_transfer_height[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
@@ -71,9 +51,9 @@ class Holder:
 
                     unlocked += self._join_values[0]
 
-                    self.remove_from_array(self._join_values, self._join_values[0])
-                    self.remove_from_array(self._join_height, self._join_height[0])
-                    self.remove_from_array(self._allow_transfer_height, self._allow_transfer_height[0])
+                    Utils.remove_from_array(self._join_values, self._join_values[0])
+                    Utils.remove_from_array(self._join_height, self._join_height[0])
+                    Utils.remove_from_array(self._allow_transfer_height, self._allow_transfer_height[0])
                 else:
                     break
         return unlocked
