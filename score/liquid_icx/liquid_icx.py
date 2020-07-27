@@ -3,14 +3,14 @@ from .consts import *
 from .Holder import Holder
 from .interfaces.irc_2_interface import *
 from .interfaces.token_fallback_interface import *
-from .interfaces.system_contract_interface import *
+from .interfaces.system_score_interface import *
 from .scorelib.linked_list import *
+from .scorelib.Utils import *
 
 
-class FakeSystemContractInterface(InterfaceScore):
-    @interface
-    def setStake(self):
-        pass
+class Delegation(TypedDict):
+    address: Address
+    value: int
 
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
@@ -44,6 +44,14 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._holders = LinkedListDB("holders_list", db, str)
 
+        self._current_term = VarDB("current_term", db, int)
+        self._distributed = VarDB("distributed", db, int)
+
+        self._rewards = VarDB("rewards", db, int)
+
+        self._distribute_it = VarDB("distribute_it", db, int)
+        self._iteration_limit = VarDB("iteration_limit", db, int)
+
     def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
         if _initialSupply < 0:
@@ -57,6 +65,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._total_supply.set(total_supply)
         self._decimals.set(_decimals)
+
+        self._current_term.set(Utils.system_score_interface().getIISSInfo()["nextPRepTerm"] - TERM_LENGTH)
+        self._iteration_limit.set(500)
 
     def on_update(self) -> None:
         super().on_update()
@@ -103,6 +114,15 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             result.append(str(item))
         return result
 
+    @external(readonly=True)
+    def getStaked(self) -> dict:
+        return IconScoreBase.create_interface_score(ZERO_SCORE_ADDRESS, InterfaceSystemScore).getStake(self.address)
+
+    @external(readonly=True)
+    def getDelegation(self) -> dict:
+        return IconScoreBase.create_interface_score(ZERO_SCORE_ADDRESS, InterfaceSystemScore).getDelegation(
+            self.address)
+
     @staticmethod
     def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
         node_id, value = item
@@ -129,17 +149,63 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @payable
     @external(readonly=False)
     def join(self) -> None:
+        """
+        https://github.com/icon-project/icon-service/blob/release/1.7.0/tests/integrate_test/samples/sample_internal_call_scores/sample_system_score_intercall/sample_system_score_intercall.py
+        """
         if self.msg.value < 0:
             revert("Joining value cannot be less than zero")
 
         if self.msg.sender not in self._balances:
             self._holders.append(str(self.msg.sender))
-            self.Debug(str(Address))
 
         Holder(self.db, self.msg.sender).update(self.msg.value)
+        system_score = IconScoreBase.create_interface_score(ZERO_SCORE_ADDRESS, InterfaceSystemScore)
+        system_score.setStake(self.getStaked()["stake"] + self.msg.value)
+
+        delegations: list = []
+
+        delegation_info: Delegation = {
+            "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
+            "value": 1
+        }
+
+        # delegations.append(delegation_info)
+        # self.score_call(from_=self._accounts[0],
+        #                 to_=self.score_addr,
+        #                 func_name="call_setDelegation",
+        #                 params={"delegations": delegations})
 
         self._mint(self.msg.sender, self.msg.value)
         self.Join(self.msg.sender, self.msg.value)
+
+    def distribute(self):
+        """ Distribute I-Score rewards once per term"""
+        if self._distributed.get() < self._current_term.get():
+            if self._rewards.get() is 0:
+                sys_score = Utils.system_score_interface()
+                self._rewards.set(sys_score.claimIScore() / 1000)
+                sys_score.setStake(sys_score.getStake(self.address) + self._rewards.get())
+                # TODO setDelegate()
+
+
+            start_it = self._distribute_it.get()
+            end_it = self._distribute_it.get() + self._iteration_limit.get()
+            for it in range(start_it, end_it):
+                holder_address = self._holders.node_value(it)
+                holder = Holder(self.db, holder_address)
+                if holder.transferable is not 0:
+                    # update balances
+                    holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
+                    self._rewards.set(self._rewards.get() - holder_rewards)
+                    self._mint(self.msg.sender, holder_rewards)
+                    holder.transferable += holder_rewards
+
+                if holder_address is self._holders.tail_value():
+                    # distribution finished
+                    self._rewards.set(0)
+                    self._distribute_it.set(0)
+                    self._current_term.set(Utils.system_score_interface().getIISSInfo()["nextPRepTerm"] - TERM_LENGTH)
+                    break
 
     # ================================================
     #  Internal methods
@@ -166,11 +232,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._balances[_from] = self._balances[_from] - _value
 
         if sender.transferable == 0 and sender.locked == 0:
-            # remove from holders array
-            pass
+            self.Debug("TODO: remove user from holders.")
 
         if _to not in self._balances:
-            self._add_address_to_holders_array(_to)
+            self._holders.append(self.msg.sender)
 
         receiver.transferable = receiver.transferable + _value
         self._balances[_to] = self._balances[_to] + _value
