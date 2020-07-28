@@ -38,16 +38,19 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     # ================================================
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
+        # IRC2 Standard variables
         self._total_supply = VarDB('total_supply', db, value_type=int)
         self._decimals = VarDB('decimals', db, value_type=int)
         self._balances = DictDB('balances', db, value_type=int)
 
+        # LICX variables
         self._holders = LinkedListDB("holders_list", db, str)
 
-        self._current_term = VarDB("current_term", db, int)
-        self._distributed = VarDB("distributed", db, int)
+        self._min_join_value = VarDB("min_join_value", db, int)
 
         self._rewards = VarDB("rewards", db, int)
+
+        self._last_distributed_height = VarDB("last_distributed_height", db, int)
 
         self._distribute_it = VarDB("distribute_it", db, int)
         self._iteration_limit = VarDB("iteration_limit", db, int)
@@ -66,7 +69,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._total_supply.set(total_supply)
         self._decimals.set(_decimals)
 
-        self._current_term.set(Utils.system_score_interface().getIISSInfo()["nextPRepTerm"] - TERM_LENGTH)
+        self._min_join_value.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
 
     def on_update(self) -> None:
@@ -132,6 +135,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def selectFromHolders(self, address: str) -> list:
         return self._holders.select(0, self.linkedlistdb_sentinel, match=address)
 
+    @external(readonly=True)
+    def getHolderByNodeID(self, id: int) -> any:
+        return self._holders.node_value(id)
+
     @external(readonly=False)
     def removeHolder(self) -> None:
         self._burn(self.msg.sender, self._balances[self.msg.sender])
@@ -159,7 +166,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             self._holders.append(str(self.msg.sender))
 
         Holder(self.db, self.msg.sender).update(self.msg.value)
-        system_score = IconScoreBase.create_interface_score(ZERO_SCORE_ADDRESS, InterfaceSystemScore)
+        system_score = Utils.system_score_interface()
         system_score.setStake(self.getStaked()["stake"] + self.msg.value)
 
         delegations: list = []
@@ -180,32 +187,34 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     def distribute(self):
         """ Distribute I-Score rewards once per term"""
-        if self._distributed.get() < self._current_term.get():
+        sys_score = Utils.system_score_interface()
+        if self._last_distributed_height.get() < sys_score.getPRepTerm()["startBlockHeight"]:
             if self._rewards.get() is 0:
-                sys_score = Utils.system_score_interface()
                 self._rewards.set(sys_score.claimIScore() / 1000)
                 sys_score.setStake(sys_score.getStake(self.address) + self._rewards.get())
                 # TODO setDelegate()
-
 
             start_it = self._distribute_it.get()
             end_it = self._distribute_it.get() + self._iteration_limit.get()
             for it in range(start_it, end_it):
                 holder_address = self._holders.node_value(it)
                 holder = Holder(self.db, holder_address)
-                if holder.transferable is not 0:
-                    # update balances
+                holder.unlock()
+                if holder.transferable >= 10 ** 18:
+                    # update balances, only if User has at least 1 LICX
                     holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
-                    self._rewards.set(self._rewards.get() - holder_rewards)
                     self._mint(self.msg.sender, holder_rewards)
                     holder.transferable += holder_rewards
 
+
                 if holder_address is self._holders.tail_value():
-                    # distribution finished
+                    # distribution finished, reset stuff
                     self._rewards.set(0)
                     self._distribute_it.set(0)
-                    self._current_term.set(Utils.system_score_interface().getIISSInfo()["nextPRepTerm"] - TERM_LENGTH)
                     break
+
+    def leave(self):
+        pass
 
     # ================================================
     #  Internal methods
