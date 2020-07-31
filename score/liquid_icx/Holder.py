@@ -37,7 +37,7 @@ class Holder:
         self.locked = 0
         self.transferable = 0
 
-    def unlock(self, ) -> int:
+    def unlock(self) -> int:
         """
         Unlocks user's LICX and removes entry from the _join_values, join_height, _allow_transfer_height
         :return: Amount of new unlocked LICX

@@ -8,9 +8,9 @@ from .scorelib.linked_list import *
 from .scorelib.Utils import *
 
 
-class Delegation(TypedDict):
-    address: Address
-    value: int
+#class Delegation(TypedDict):
+#    address: Address
+#    value: int
 
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
@@ -145,7 +145,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return self._holders.select(0, self.linkedlistdb_sentinel, match=address)
 
     @external(readonly=True)
-    def getHolderByNodeID(self, id: int) -> any:
+    def getHolderByNodeID(self, id: int) -> Address:
         return self._holders.node_value(id)
 
     @external(readonly=False)
@@ -155,8 +155,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # Holder.remove_from_array(self._holders, self.msg.sender)
 
     @external(readonly=False)
-    def unlockHolderLicx(self):
-        Holder(self.db, self.msg.sender).unlock()
+    def unlockHolderLicx(self) -> int:
+        return Holder(self.db, self.msg.sender).unlock()
 
     @external(readonly=True)
     def getLocked(self) -> list:
@@ -179,15 +179,15 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         system_score.setStake(self.getStaked()["stake"] + self.msg.value)
 
 
-        delegations: list = []
-
-        delegation_info: Delegation = {
-            "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
-            "value": 1
-        }
-        delegations.append(delegation_info)
-
-        system_score.setDelegation(delegations)
+        #delegations: list = []
+#
+        #delegation_info: Delegation = {
+        #    "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
+        #    "value": 1
+        #}
+        #delegations.append(delegation_info)
+#
+        #system_score.setDelegation(delegations)
 
         # delegations.append(delegation_info)
         # self.score_call(from_=self._accounts[0],
@@ -198,7 +198,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._mint(self.msg.sender, self.msg.value)
         self.Join(self.msg.sender, self.msg.value)
 
-    @external(readonly=True)
+    @external
     def distribute(self):
         """ Distribute I-Score rewards once per term """
         sys_score = Utils.system_score_interface()
