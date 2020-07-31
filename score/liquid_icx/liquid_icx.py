@@ -33,6 +33,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def Transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         pass
 
+    @eventlog(indexed=0)
+    def Distribute(self):
+        pass
+
     # ================================================
     #  Initialization
     # ================================================
@@ -105,10 +109,15 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._transfer(self.msg.sender, _to, _value, _data)
 
     @external(readonly=True)
-    def getHolder(self) -> dict:
+    def getHolder(self, _address: Address = None) -> dict:
         if self.msg.sender is None:
             revert("LiquidICX: You need to specify the 'from' attribute in your call.")
-        return Holder(self.db, self.msg.sender).serialize()
+        return Holder(self.db, self.msg.sender).serialize()  #
+
+
+    @external(readonly=True)
+    def test(self) -> bool:
+        return self.msg.sender in self._balances
 
     @external(readonly=True)
     def getHolders(self) -> list:
@@ -169,12 +178,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         system_score = Utils.system_score_interface()
         system_score.setStake(self.getStaked()["stake"] + self.msg.value)
 
+
         delegations: list = []
 
         delegation_info: Delegation = {
             "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
             "value": 1
         }
+        delegations.append(delegation_info)
+
+        system_score.setDelegation(delegations)
 
         # delegations.append(delegation_info)
         # self.score_call(from_=self._accounts[0],
@@ -185,8 +198,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._mint(self.msg.sender, self.msg.value)
         self.Join(self.msg.sender, self.msg.value)
 
+    @external(readonly=True)
     def distribute(self):
-        """ Distribute I-Score rewards once per term"""
+        """ Distribute I-Score rewards once per term """
         sys_score = Utils.system_score_interface()
         if self._last_distributed_height.get() < sys_score.getPRepTerm()["startBlockHeight"]:
             if self._rewards.get() is 0:
@@ -203,14 +217,15 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 if holder.transferable >= 10 ** 18:
                     # update balances, only if User has at least 1 LICX
                     holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
-                    self._mint(self.msg.sender, holder_rewards)
+                    self._mint(self.msg.sender, holder_rewards, True)
                     holder.transferable += holder_rewards
-
 
                 if holder_address is self._holders.tail_value():
                     # distribution finished, reset stuff
                     self._rewards.set(0)
                     self._distribute_it.set(0)
+                    self._last_distributed_height.set(sys_score.getPRepTerm()["startBlockHeight"])
+                    self.Distribute()
                     break
 
     def leave(self):
@@ -259,11 +274,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.Transfer(_from, _to, _value, _data)
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
 
-    def _mint(self, _account: Address, _amount: int):
+    def _mint(self, _account: Address, _amount: int, _internal: bool = False):
         self._balances[_account] = self._balances[_account] + _amount
         self._total_supply.set(self.totalSupply() + _amount)
 
-        self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
+        if _internal:
+            self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
 
     def _burn(self, _account: Address, _amount: int):
         if _account == ZERO_WALLET_ADDRESS:
