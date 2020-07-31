@@ -10,6 +10,9 @@ class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
         self._stake = DictDB('stake', db, value_type=int)
         self._delegation = DictDB('delegation', db, value_type=str)
 
+        self._start_block_height = VarDB("start_block_height", db, int)
+        self._end_block_height = VarDB("start_block_height", db, int)
+
     def Delegate(self, from_ : Address, for_: str):
         pass
 
@@ -18,6 +21,11 @@ class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
 
     def on_update(self) -> None:
         super().on_update()
+
+    @external(readonly=False)
+    def setStartBlockHeight(self, _start_height: int):
+        self._start_block_height.set(_start_height)
+        self._end_block_height.set(_start_height + 43120 - 1)
 
     @external(readonly=False)
     @payable
@@ -34,7 +42,7 @@ class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
 
     @external(readonly=False)
     def claimIScore(self):
-        pass
+        return 464278147616123457132132
 
     @external(readonly=True)
     def getStake(self, _account: Address) -> int:
@@ -59,3 +67,16 @@ class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
     @external(readonly=True)
     def queryIScore(self) -> int:
         pass
+
+    @external(readonly=True)
+    def getPrepTerm(self) -> dict:
+        res = {
+            'blockHeight': '',
+            'endBlockHeight': self._end_block_height.get(),
+            'irep': '',
+            'preps': [],
+            'sequence': '',
+            'startBlockHeight': self._start_block_height.get(),
+            'totalDelegated': '',
+            'totalSupply': ''
+        }
