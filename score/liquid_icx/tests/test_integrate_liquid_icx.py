@@ -278,7 +278,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
     def test_test_123(self):
         paras = {"id": "69"}
-        tx = self._build_transaction(method="getHolderByNodeID", type_="read", params=paras)
+        tx = self._build_transaction(method="getDelegation", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
 

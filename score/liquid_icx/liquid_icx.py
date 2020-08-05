@@ -8,9 +8,9 @@ from .scorelib.linked_list import *
 from .scorelib.Utils import *
 
 
-#class Delegation(TypedDict):
-#    address: Address
-#    value: int
+class Delegation(TypedDict):
+    address: Address
+    value: int
 
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
@@ -114,7 +114,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: You need to specify the 'from' attribute in your call.")
         return Holder(self.db, self.msg.sender).serialize()  #
 
-
     @external(readonly=True)
     def test(self) -> bool:
         return self.msg.sender in self._balances
@@ -178,22 +177,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         system_score = Utils.system_score_interface()
         system_score.setStake(self.getStaked()["stake"] + self.msg.value)
 
+        delegation_info: Delegation = {
+            "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
+            "value": self.getDelegation()["totalDelegated"] + self.msg.value
+        }
 
-        #delegations: list = []
-#
-        #delegation_info: Delegation = {
-        #    "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
-        #    "value": 1
-        #}
-        #delegations.append(delegation_info)
-#
-        #system_score.setDelegation(delegations)
-
-        # delegations.append(delegation_info)
-        # self.score_call(from_=self._accounts[0],
-        #                 to_=self.score_addr,
-        #                 func_name="call_setDelegation",
-        #                 params={"delegations": delegations})
+        system_score.setDelegation([delegation_info])
 
         self._mint(self.msg.sender, self.msg.value)
         self.Join(self.msg.sender, self.msg.value)
