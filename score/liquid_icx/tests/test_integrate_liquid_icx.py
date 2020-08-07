@@ -1,6 +1,6 @@
 import json
 import logging
-import os,sys
+import os, sys
 import pprint
 import fileinput
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -22,6 +22,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
     FORCE_DEPLOY = False  # Change to True, if you want to deploy a new SCORE for testing
     LOCAL_NETWORK_TEST = False
+    TEST_WITH_FAKE_SYS_SCORE = False
 
     SYS_SCORE_ADDRESS = "cx0000000000000000000000000000000000000000"
     GOV_SCORE_ADDRESS = "cx0000000000000000000000000000000000000001"
@@ -36,42 +37,44 @@ class LiquidICXTest(IconIntegrateTestBase):
     # YEUOIDO_SCORE_ADDRESS = "cx3b51da5f05f389859efae83b1d3c1672055985b1"
     # YEUOIDO_SCORE_ADDRESS = "cx03619f2689cd214b198f8ecf9d4ef79e8a2025f3"
     YEUOIDO_SCORE_ADDRESS = "cx03619f2689cd214b198f8ecf9d4ef79e8a2025f3"
+    # YEUOIDO_SCORE_ADDRESS = "cx81e6776779ea846da7f8762c6faf091a72e13786"
 
     pp = pprint.PrettyPrinter(indent=4)
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.replace_in_consts_py(LiquidICXTest.SYS_SCORE_ADDRESS, LiquidICXTest.FAKE_SYS_SCORE_YEOUIDO)
+        if LiquidICXTest.TEST_WITH_FAKE_SYS_SCORE:
+            cls.replace_in_consts_py(LiquidICXTest.SYS_SCORE_ADDRESS, LiquidICXTest.FAKE_SYS_SCORE_YEOUIDO)
+
+        if LiquidICXTest.LOCAL_NETWORK_TEST:
+            cls._wallet = KeyWallet.load("../../keystore_test1", "test1_Account")
+            cls._icon_service = IconService(HTTPProvider(LiquidICXTest.LOCAL_TEST_HTTP_ENDPOINT_URI_V3))
+            cls._score_address = LiquidICXTest.LOCAL_SCORE_ADDRESS
+        else:
+            cls._wallet = KeyWallet.load("../../keystore_test3", "test3_Account")
+            cls._wallet2 = KeyWallet.load("../../keystore_test1", "test1_Account")
+            cls._icon_service = IconService(HTTPProvider(LiquidICXTest.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
+            cls._score_address = LiquidICXTest.YEUOIDO_SCORE_ADDRESS
 
     @classmethod
     def tearDownClass(cls) -> None:
         super().tearDownClass()
-        cls.replace_in_consts_py(LiquidICXTest.FAKE_SYS_SCORE_YEOUIDO, LiquidICXTest.SYS_SCORE_ADDRESS)
+        if LiquidICXTest.TEST_WITH_FAKE_SYS_SCORE:
+            cls.replace_in_consts_py(LiquidICXTest.FAKE_SYS_SCORE_YEOUIDO, LiquidICXTest.SYS_SCORE_ADDRESS)
 
     @classmethod
-    def replace_in_consts_py(self, pattern, sub):
+    def replace_in_consts_py(cls, pattern, sub):
         for line in fileinput.input("../consts.py", inplace=1):
-            if "ZERO_SCORE_ADDRESS" in line:
+            if "SYSTEM_SCORE" in line:
                 line = line.replace(pattern, sub)
             print(line, end='')
 
-    def setUp(self):
+    def setUp(self, **kwargs):
         super().setUp()
-
-        if LiquidICXTest.LOCAL_NETWORK_TEST:
-            self._wallet = KeyWallet.load("../../keystore_test1", "test1_Account")
-            self._icon_service = IconService(HTTPProvider(LiquidICXTest.LOCAL_TEST_HTTP_ENDPOINT_URI_V3))
-            self._score_address = LiquidICXTest.LOCAL_SCORE_ADDRESS
-        else:
-            self._wallet = KeyWallet.load("../../keystore_test3", "test3_Account")
-            self._wallet2 = KeyWallet.load("../../keystore_test1", "test1_Account")
-            self._icon_service = IconService(HTTPProvider(LiquidICXTest.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
-            self._score_address = LiquidICXTest.YEUOIDO_SCORE_ADDRESS
 
         if LiquidICXTest.FORCE_DEPLOY:
             self._score_address = self._deploy_score()["scoreAddress"]
-
 
     def _deploy_score(self, to: str = SCORE_INSTALL_ADDRESS) -> dict:
         score_content_bytes = gen_deploy_data_content(LiquidICXTest.SCORE_PROJECT)
@@ -162,7 +165,7 @@ class LiquidICXTest(IconIntegrateTestBase):
         else:
             result = self._icon_service.call(call)
         LiquidICXTest.pp.pprint(result)
-        #return result['nextPRepTerm']
+        # return result['nextPRepTerm']
 
     def test_score_update(self):
         # update SCORE
@@ -201,13 +204,13 @@ class LiquidICXTest(IconIntegrateTestBase):
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
         return tx_result
 
-    def _test_10000_join(self):
+    def test_100_join(self):
         result = []
         with ThreadPoolExecutor(max_workers=100) as pool:
             for it in range(0, 100):
                 tx_res = pool.submit(self._join_with_new_wallet)
                 result.append(tx_res)
-        self.assertEqual(10, len(self.test_get_holders()))
+        self.assertEqual(100, len(self.test_get_holders()))
 
     def test_join_with_new_wallet(self):
         self._join_with_new_wallet()
@@ -282,6 +285,62 @@ class LiquidICXTest(IconIntegrateTestBase):
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
 
+    def test_queryIscore(self):
+        tx = self._build_transaction(method="queryIScore", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+
     def test_distribute(self):
-        pass
+        tx = self._build_transaction(method="distribute", margin=500000)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+
+    def _test_query_iscore(self):
+        paras = {
+            "address": self._wallet.get_address()
+        }
+        tx = self._build_transaction(method="queryIScore", type_="read",
+                                     params=paras, margin=500000, to=SCORE_INSTALL_ADDRESS)
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+        """
+        Before Claim:
+            {   
+            'blockHeight': '0x4da417',
+            'estimatedICX': '0x391eb87d8a56f3c06',
+            'iscore': '0xdf2000aa6463a827a93'
+            }
+        After Claim:
+        {   
+            'blockHeight': '0x4da417', 
+            'estimatedICX': '0x0', 
+            'iscore': '0x323'
+        }
+        """
+
+    def _test_claim_iscore(self):
+        tx = self._build_transaction(method="claimIScore", margin=500000, to=SCORE_INSTALL_ADDRESS)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+        """
+        Tx result: 
+        {   
+            'blockHash': '0x15177bd242be43636ba53cad9d3a159cfcbdb7165c3c01cd4fb5c4a050bdbfd6',
+            'blockHeight': 5161046,
+            'cumulativeStepUsed': 104800,
+            'eventLogs': [   {   'data': [   '0xdf2000aa6463a827770',
+                                             '0x391eb87d8a56f3c06'],
+                                 'indexed': [   'IScoreClaimedV2(Address,int,int)',
+                                                'hx16668be6daa4bfa22af768270d51aec9d37fa227'],
+                                 'scoreAddress': 'cx0000000000000000000000000000000000000000'}],
+            'logsBloom':.....
+            'status': 1,
+            'stepPrice': 10000000000,
+            'stepUsed': 104800,
+            'to': 'cx0000000000000000000000000000000000000000',
+            'txHash': '0xc3c502f0568b49bb4fc7a46f1c2cf7dbacc38f33e488fe0b6eda362db43c220e',
+            'txIndex': 1
+        }    
+        """
+
 

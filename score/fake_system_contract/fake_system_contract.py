@@ -1,5 +1,6 @@
 from iconservice import *
 from .fake_system_contract_interface import FakeSystemContractInterface
+
 TAG = 'FakeSystemContract'
 
 
@@ -10,11 +11,7 @@ class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
         self._stake = DictDB('stake', db, value_type=int)
         self._delegation = DictDB('delegation', db, value_type=str)
 
-        self._start_block_height = VarDB("start_block_height", db, int)
-        self._end_block_height = VarDB("start_block_height", db, int)
-
-    def Delegate(self, from_ : Address, for_: str):
-        pass
+        self._subtract_terms = VarDB("subtract_terms", db, int)
 
     def on_install(self) -> None:
         super().on_install()
@@ -23,12 +20,11 @@ class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
         super().on_update()
 
     @external(readonly=False)
-    def setStartBlockHeight(self, _start_height: int):
-        self._start_block_height.set(_start_height)
-        self._end_block_height.set(_start_height + 43120 - 1)
+    def setSubstractTerms(self, _value: int):
+        self._subtract_terms.set(_value)
 
-    @external(readonly=False)
     @payable
+    @external(readonly=False)
     def setStake(self) -> str:
         if self.msg.value <= 0:
             revert("FakeSystemContract: Failed to stake. Values is <= 0")
@@ -38,7 +34,6 @@ class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
     @external(readonly=False)
     def setDelegation(self, params: str):
         self._delegation[self.msg.sender.__str__()] = params
-        self.Delegate(self.msg.sender, params)
 
     @external(readonly=False)
     def claimIScore(self):
@@ -70,13 +65,21 @@ class FakeSystemContract(IconScoreBase, FakeSystemContractInterface):
 
     @external(readonly=True)
     def getPrepTerm(self) -> dict:
-        res = {
-            'blockHeight': '',
-            'endBlockHeight': self._end_block_height.get(),
+        return {
+            'blockHeight': self.block_height,
+            'endBlockHeight': self.getEndBlockHeight(),
             'irep': '',
             'preps': [],
             'sequence': '',
-            'startBlockHeight': self._start_block_height.get(),
+            'startBlockHeight': self.getStartBlockHeight(),
             'totalDelegated': '',
             'totalSupply': ''
         }
+
+    def getEndBlockHeight(self):
+        sys_score = self.create_interface_score(ZERO_SCORE_ADDRESS, InterfaceSystemScore)
+        return sys_score.getPRepTerm()["endBlockHeight"] - (self._subtract_terms.get() * 43120)
+
+    def getStartBlockHeight(self):
+        sys_score = self.create_interface_score(ZERO_SCORE_ADDRESS, InterfaceSystemScore)
+        return sys_score.getPRepTerm()["startBlockHeight"] - (self._subtract_terms.get() * 43120)

@@ -1,4 +1,5 @@
 import os
+import pprint as pp
 
 from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.builder.transaction_builder import DeployTransactionBuilder
@@ -16,7 +17,7 @@ class TestTest(IconIntegrateTestBase):
     TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
     SCORE_PROJECT= os.path.abspath(os.path.join(DIR_PATH, '..'))
 
-    def setUp(self):
+    def setUp(self, **kwargs):
         super().setUp()
 
         #self.icon_service = None
@@ -46,8 +47,6 @@ class TestTest(IconIntegrateTestBase):
         # process the transaction in local
         tx_result = self.process_transaction(signed_transaction, self.icon_service)
 
-        print(tx_result)
-
         self.assertEqual(True, tx_result['status'])
         self.assertTrue('scoreAddress' in tx_result)
 
@@ -56,6 +55,7 @@ class TestTest(IconIntegrateTestBase):
     def test_score_update(self):
         # update SCORE
         tx_result = self._deploy_score(self._score_address)
+        pp.pprint(tx_result)
 
         self.assertEqual(self._score_address, tx_result['scoreAddress'])
 
