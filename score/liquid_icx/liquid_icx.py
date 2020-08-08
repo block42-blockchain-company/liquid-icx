@@ -62,18 +62,15 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # System SCORE
         self._system_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
-    def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
+    def on_install(self, _decimals: int = 18) -> None:
         super().on_install()
-        if _initialSupply < 0:
-            revert("Initial supply cannot be less than zero")
 
         if _decimals < 0:
             revert("Decimals cannot be less than zero")
 
-        total_supply = _initialSupply * 10 ** _decimals
-        Logger.debug(f'on_install: total_supply={total_supply}', TAG)
+        Logger.debug(f'on_install: total_supply=0', TAG)
 
-        self._total_supply.set(total_supply)
+        self._total_supply.set(0)
         self._decimals.set(_decimals)
 
         self._min_join_value.set(10 * 10 ** _decimals)
@@ -115,7 +112,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def getHolder(self, _address: Address = None) -> dict:
         if self.msg.sender is None:
             revert("LiquidICX: You need to specify the 'from' attribute in your call.")
-        return Holder(self.db, self.msg.sender).serialize()  #
+        return Holder(self.db, self.msg.sender).serialize()
 
     @external(readonly=True)
     def test(self) -> bool:
@@ -166,28 +163,30 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @payable
     @external(readonly=False)
     def join(self) -> None:
+        if self.msg.value < self._min_join_value.get():
+            revert("Joining value cannot be less than the minimum join value")
+        self._join(self.msg.sender, self.msg.value)
+
+    def _join(self, sender, value) -> None:
         """
         https://github.com/icon-project/icon-service/blob/release/1.7.0/tests/integrate_test/samples/sample_internal_call_scores/sample_system_score_intercall/sample_system_score_intercall.py
         """
-        if self.msg.value < 0:
-            revert("Joining value cannot be less than zero")
+        if sender not in self._balances:
+            self._holders.append(str(sender))
 
-        if self.msg.sender not in self._balances:
-            self._holders.append(str(self.msg.sender))
-
-        Holder(self.db, self.msg.sender).update(self.msg.value)
+        Holder(self.db, sender).update(value)
         system_score = Utils.system_score_interface()
-        system_score.setStake(self.getStaked()["stake"] + self.msg.value)
+        system_score.setStake(self.getStaked()["stake"] + value)
 
         delegation_info: Delegation = {
             "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
-            "value": self.getDelegation()["totalDelegated"] + self.msg.value
+            "value": self.getDelegation()["totalDelegated"] + value
         }
 
         system_score.setDelegation([delegation_info])
 
-        self._mint(self.msg.sender, self.msg.value)
-        self.Join(self.msg.sender, self.msg.value)
+        self._mint(sender, value)
+        self.Join(sender, value)
 
     @external
     def distribute(self):
