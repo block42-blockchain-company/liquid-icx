@@ -59,6 +59,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distribute_it = VarDB("distribute_it", db, int)
         self._iteration_limit = VarDB("iteration_limit", db, int)
 
+        # System SCORE
+        self._system_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
+
     def on_install(self, _initialSupply: int = 0, _decimals: int = 18) -> None:
         super().on_install()
         if _initialSupply < 0:
@@ -127,12 +130,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @external(readonly=True)
     def getStaked(self) -> dict:
-        return IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore).getStake(self.address)
+        return self._system_score.getStake(self.address)
 
     @external(readonly=True)
     def getDelegation(self) -> dict:
-        return IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore).getDelegation(
-            self.address)
+        return self._system_score.getDelegation(self.address)
 
     @staticmethod
     def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
