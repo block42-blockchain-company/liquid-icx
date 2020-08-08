@@ -50,7 +50,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # LICX variables
         self._holders = LinkedListDB("holders_list", db, str)
 
-        self._min_join_value = VarDB("min_join_value", db, int)
+        self._min_value_to_get_rewards = VarDB("min_join_value", db, int)
 
         self._rewards = VarDB("rewards", db, int)
 
@@ -73,7 +73,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._total_supply.set(0)
         self._decimals.set(_decimals)
 
-        self._min_join_value.set(10 * 10 ** _decimals)
+        self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
 
     def on_update(self) -> None:
@@ -163,7 +163,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @payable
     @external(readonly=False)
     def join(self) -> None:
-        if self.msg.value < self._min_join_value.get():
+        if self.msg.value < self._min_value_to_get_rewards.get():
             revert("Joining value cannot be less than the minimum join value")
         self._join(self.msg.sender, self.msg.value)
 
@@ -250,11 +250,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         sender.transferable = sender.transferable - _value
         self._balances[_from] = self._balances[_from] - _value
 
-        if sender.transferable == 0 and sender.locked == 0:
+        if sender.transferable < self._min_value_to_get_rewards.get() and sender.locked == 0:
             self.Debug("TODO: remove user from holders.")
 
         if _to not in self._balances:
-            self._holders.append(self.msg.sender)
+            self._holders.append(_to)
 
         receiver.transferable = receiver.transferable + _value
         self._balances[_to] = self._balances[_to] + _value
