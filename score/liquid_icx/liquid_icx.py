@@ -102,6 +102,14 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def balanceOf(self, _owner: Address) -> int:
         return self._balances[_owner]
 
+    @external(readonly=True)
+    def transferableOf(self, _owner: Address) -> int:
+        return Holder(self.db, _owner).transferable
+
+    @external(readonly=True)
+    def lockedOf(self, _owner: Address) -> int:
+        return Holder(self.db, _owner).locked
+
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None):
         if _data is None:
