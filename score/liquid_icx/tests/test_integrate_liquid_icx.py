@@ -65,7 +65,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
     @classmethod
     def replace_in_consts_py(cls, pattern, sub):
-        for line in fileinput.input("../consts.py", inplace=1):
+        for line in fileinput.input("../scorelib/consts.py", inplace=1):
             if "SYSTEM_SCORE" in line:
                 line = line.replace(pattern, sub)
             print(line, end='')
