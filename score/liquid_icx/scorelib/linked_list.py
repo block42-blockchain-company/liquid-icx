@@ -55,6 +55,10 @@ class _NodeDB:
         self._next.remove()
         self._init.remove()
 
+    @property
+    def id(self):
+        return self._name.replace(_NodeDB._NAME, "")
+
     def exists(self) -> bool:
         return self._init.get() == 1
 
@@ -150,7 +154,7 @@ class LinkedListDB:
             raise EmptyLinkedListException(self._name)
         return self._get_node(tail_id)
 
-    def _get_head_node(self) -> _NodeDB:
+    def get_head_node(self) -> _NodeDB:
         head_id = self._head_id.get()
         if not head_id:
             raise EmptyLinkedListException(self._name)
