@@ -18,22 +18,24 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     #  Event logs
     # ================================================
     @eventlog(indexed=2)
-    def DebugInt(self, int1: int, int2: int): pass
+    def DebugInt(self, int1: int, int2: int):
+        pass
 
     @eventlog(indexed=1)
-    def Debug(self, str1: str): pass
+    def Debug(self, str1: str):
+        pass
 
     @eventlog(indexed=2)
-    def Join(self, _from: Address, _value: int): pass
+    def Join(self, _from: Address, _value: int):
+        pass
 
     @eventlog(indexed=3)
-    def Transfer(self, _from: Address, _to: Address, _value: int, _data: bytes): pass
+    def Transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
+        pass
 
     @eventlog(indexed=0)
-    def Distribute(self, _block_height: int): pass
-
-    @eventlog
-    def IScoreClaim(self, _block_height: int): pass
+    def Distribute(self, _block_height: int):
+        pass
 
     # ================================================
     #  Initialization
@@ -116,12 +118,14 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @external(readonly=True)
     def getHolder(self, _address: Address = None) -> dict:
-        if self.msg.sender is None:
+        if _address is None:
             revert("LiquidICX: You need to specify the 'from' attribute in your call.")
-        return Holder(self.db, self.msg.sender).serialize()
+        return Holder(self.db, _address).serialize()
 
     @external(readonly=True)
     def getHolders(self) -> list:
+        # TODO: Implement with new signature
+        # def getHolder(self, start: n_id | Address = None, offset: int) -> list
         result = []
         for item in self._holders:
             result.append(item)
@@ -130,6 +134,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @external(readonly=True)
     def getStaked(self) -> dict:
         return self._system_score.getStake(self.address)
+
+    @external(readonly=True)
+    def rewards(self) -> int:
+        return self._rewards.get()
 
     @external(readonly=True)
     def getDelegation(self) -> dict:
@@ -141,12 +149,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @external(readonly=False)
     def setIterationLimit(self, _value: int):
-        self._iteration_limit.set(_value)
-
-    @external(readonly=True)
-    def queryIScore(self) -> dict:
-        sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
-        return sys_score.queryIScore(self.address)
+        if self.msg.sender == self.owner:
+            self._iteration_limit.set(_value)
+        else:
+            revert("LiquidICX: Only owner function at current state.")
 
     @staticmethod
     def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
@@ -162,18 +168,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return self._holders.node_value(id)
 
     @external
-    def removeHolder(self) -> None:
-        self._burn(self.msg.sender, self._balances[self.msg.sender])
-        Holder(self.db, self.msg.sender).delete()
-        # Holder.remove_from_array(self._holders, self.msg.sender)
-
-    @external
-    def unlockHolderLicx(self) -> int:
-        return Holder(self.db, self.msg.sender).unlock()
-
-    @external(readonly=True)
-    def getLocked(self) -> list:
-        return list(range(len(Holder(self.db, self.msg.sender).allow_transfer_height)))
+    def unlockLicx(self, address: Address = None) -> int:
+        if address is None:
+            address = self.msg.sender
+        return Holder(self.db, address).unlock()
 
     @payable
     @external
@@ -182,32 +180,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("Joining value cannot be less than the minimum join value")
         self._join(self.msg.sender, self.msg.value)
 
-    def _join(self, sender: Address, value: int) -> None:
-        """
-        https://github.com/icon-project/icon-service/blob/release/1.7.0/tests/integrate_test/samples/sample_internal_call_scores/sample_system_score_intercall/sample_system_score_intercall.py
-        """
-        if sender not in self._balances:
-            self._holders.append(str(sender))
-
-        Holder(self.db, sender).update(value)
-        system_score = Utils.system_score_interface()
-        system_score.setStake(self.getStaked()["stake"] + value)
-
-        delegation_info: Delegation = {
-            "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
-            "value": self.getDelegation()["totalDelegated"] + value
-        }
-
-        system_score.setDelegation([delegation_info])
-
-        self._mint(sender, value)
-        self.Join(sender, value)
-
     @external
     def distribute(self):
         """ Distribute I-Score rewards once per term """
         if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
-            if self._rewards.get() is 0:
+            if self._rewards.get() == 0:
                 # claim rewards and re-stake and re-delegate with these
                 self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
                 self._system_score.claimIScore()
@@ -217,15 +194,14 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     "value": self.getDelegation()["totalDelegated"] + self._rewards.get()
                 }
                 self._system_score.setDelegation([delegation])
-                self.IScoreClaim(self.block_height)
                 # get head id for start iteration
                 self._distribute_it.set(self._holders.get_head_node().id)
 
-            try:
-                it = 0
-                cur_id = self._distribute_it.get()
-                cur_address = ""
-                while cur_address != self._holders.tail_value():
+            it = 0
+            cur_id = self._distribute_it.get()
+            cur_address = str()
+            while cur_address != self._holders.tail_value():
+                try:
                     cur_address = self._holders.node_value(cur_id)
                     cur_id = self._holders.next(cur_id)
 
@@ -236,7 +212,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                         holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
                         self._mint(self.msg.sender, holder_rewards, True)
                         holder.transferable += holder_rewards
-                    if cur_address != self._holders.tail_value():
+                    if cur_address == self._holders.tail_value():
                         # distribution finished, reset stuff
                         self._rewards.set(0)
                         self._distribute_it.set(0)
@@ -248,13 +224,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                         self._distribute_it.set(cur_id)
                         break
                     it += 1
-            except LinkedNodeNotFound:
-                self.Debug(f"Node with id {123} does not exist.")
-            except StopIteration:
-                self.Debug(f"Done with distributing")
-
-    def leave(self):
-        pass
+                except LinkedNodeNotFound:
+                    self.Debug(f"Node with id {cur_id} does not exist.")
+        else:
+            revert("LiquidICX: Distribute called already this term.")
 
     # ================================================
     #  Internal methods
@@ -318,3 +291,21 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # TODO  Does it make sense to remove here a holder, if balances[owner] == 0 ?
 
         self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')
+
+    def _join(self, sender: Address, value: int) -> None:
+        if sender not in self._balances:
+            self._holders.append(str(sender))
+
+        Holder(self.db, sender).update(value)
+        system_score = Utils.system_score_interface()
+        system_score.setStake(self.getStaked()["stake"] + value)
+
+        delegation_info: Delegation = {
+            "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
+            "value": self.getDelegation()["totalDelegated"] + value
+        }
+
+        system_score.setDelegation([delegation_info])
+
+        self._mint(sender, value)
+        self.Join(sender, value)

@@ -14,7 +14,7 @@ class Holder:
         # Presents how much user deposited to SCORE in chronological order
         self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
         self._join_height = ArrayDB("join_height_" + str(_address), db, value_type=int)
-        self._allow_transfer_height = ArrayDB("allow_transfer_" + str(_address), db, value_type=int)
+        self._next_unlock_height = ArrayDB("next_unlock_height_" + str(_address), db, value_type=int)
 
     def update(self, join_amount: int):
         if len(self._join_values) > 10:
@@ -24,7 +24,7 @@ class Holder:
 
         self._join_values.put(join_amount)
         self._join_height.put(iiss_info["blockHeight"])
-        self._allow_transfer_height.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
+        self._next_unlock_height.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
 
         self.locked = self.locked + join_amount
 
@@ -32,7 +32,7 @@ class Holder:
         while self._join_values:
             self._join_values.pop()
             self._join_height.pop()
-            self._allow_transfer_height.pop()
+            self._next_unlock_height.pop()
 
         self.locked = 0
         self.transferable = 0
@@ -45,8 +45,8 @@ class Holder:
         unlocked = 0
         if self.locked > 0:
             next_term = Utils.system_score_interface().getIISSInfo()["nextPRepTerm"]
-            while self._allow_transfer_height:
-                if next_term > self._allow_transfer_height[0]:  # always check and remove the first element only
+            while self._next_unlock_height:
+                if next_term > self._next_unlock_height[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
                     self.transferable = self.transferable + self._join_values[0]
 
@@ -54,7 +54,7 @@ class Holder:
 
                     Utils.remove_from_array(self._join_values, self._join_values[0])
                     Utils.remove_from_array(self._join_height, self._join_height[0])
-                    Utils.remove_from_array(self._allow_transfer_height, self._allow_transfer_height[0])
+                    Utils.remove_from_array(self._next_unlock_height, self._next_unlock_height[0])
                 else:
                     break
         return unlocked
@@ -89,7 +89,7 @@ class Holder:
 
     @property
     def allow_transfer_height(self) -> ArrayDB:
-        return self._allow_transfer_height
+        return self._next_unlock_height
 
     def serialize(self) -> dict:
         return {
@@ -97,5 +97,5 @@ class Holder:
             "locked": self.locked,
             "join_values": list(self.join_values),
             "join_height": list(self.join_height),
-            "allow_transfer_height": list(self._allow_transfer_height),
+            "allow_transfer_height": list(self._next_unlock_height),
         }
