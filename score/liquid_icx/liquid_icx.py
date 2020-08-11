@@ -119,7 +119,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @external(readonly=True)
     def getHolder(self, _address: Address = None) -> dict:
         if _address is None:
-            revert("LiquidICX: You need to specify the 'from' attribute in your call.")
+            revert("LiquidICX: You need to specify the '_address' in your call.")
         return Holder(self.db, _address).serialize()
 
     @external(readonly=True)
@@ -183,6 +183,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @external
     def distribute(self):
         """ Distribute I-Score rewards once per term """
+        if not len(self._holders):
+            revert("LiquidICX: No LICX holders.")
         if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
             if self._rewards.get() == 0:
                 # claim rewards and re-stake and re-delegate with these
@@ -199,20 +201,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
             it = 0
             cur_id = self._distribute_it.get()
-            cur_address = str()
-            while cur_address != self._holders.tail_value():
+            while cur_id is not None:
                 try:
                     cur_address = self._holders.node_value(cur_id)
-                    cur_id = self._holders.next(cur_id)
-
                     holder = Holder(self.db, cur_address)
-                    holder.unlock()
                     if holder.transferable >= 10 ** 18:
                         # update balances, only if User has at least 1 LICX
                         holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
                         self._mint(self.msg.sender, holder_rewards, True)
                         holder.transferable += holder_rewards
-                    if cur_address == self._holders.tail_value():
+                    if cur_id == self._holders.get_tail_node().id:
                         # distribution finished, reset stuff
                         self._rewards.set(0)
                         self._distribute_it.set(0)
@@ -223,9 +221,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                         # save iterator for next distribution call
                         self._distribute_it.set(cur_id)
                         break
+                    cur_id = self._holders.next(cur_id)
                     it += 1
                 except LinkedNodeNotFound:
                     self.Debug(f"Node with id {cur_id} does not exist.")
+                except StopIteration:
+                    self.Debug("Something went terrible wrong. This should never happen")
         else:
             revert("LiquidICX: Distribute called already this term.")
 

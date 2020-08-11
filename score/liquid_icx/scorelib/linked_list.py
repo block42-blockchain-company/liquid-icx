@@ -149,7 +149,7 @@ class LinkedListDB:
             raise LinkedNodeNotFound(self._name, node_id)
         return node
 
-    def _get_tail_node(self) -> _NodeDB:
+    def get_tail_node(self) -> _NodeDB:
         tail_id = self._tail_id.get()
         if not tail_id:
             raise EmptyLinkedListException(self._name)
@@ -226,7 +226,7 @@ class LinkedListDB:
             self._tail_id.set(cur_id)
         else:
             # Append to tail
-            tail = self._get_tail_node()
+            tail = self.get_tail_node()
             tail.set_next(cur_id)
             cur.set_prev(self._tail_id.get())
             # Update tail to cur node

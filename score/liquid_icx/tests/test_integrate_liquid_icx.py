@@ -20,7 +20,8 @@ DIR_PATH = os.path.abspath(os.path.dirname(__file__))
 class LiquidICXTest(IconIntegrateTestBase):
     SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
 
-    FORCE_DEPLOY = False  # Change to True, if you want to deploy a new SCORE for testing
+    FORCE_DEPLOY = False
+    # Change to True, if you want to deploy a new SCORE for testing
     LOCAL_NETWORK_TEST = False
     TEST_WITH_FAKE_SYS_SCORE = False
 
@@ -33,11 +34,7 @@ class LiquidICXTest(IconIntegrateTestBase):
     FAKE_SYS_SCORE_YEOUIDO = "cx2b01010a92bf78ee464be0b5eff94676e95cd757"
 
     YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    # YEUOIDO_SCORE_ADDRESS = "cxfc51501665c72c26cb01ae009bbd1eddf0c79e4b"
-    # YEUOIDO_SCORE_ADDRESS = "cx3b51da5f05f389859efae83b1d3c1672055985b1"
-    # YEUOIDO_SCORE_ADDRESS = "cx03619f2689cd214b198f8ecf9d4ef79e8a2025f3"
-    YEUOIDO_SCORE_ADDRESS = "cx03619f2689cd214b198f8ecf9d4ef79e8a2025f3"
-    # YEUOIDO_SCORE_ADDRESS = "cx81e6776779ea846da7f8762c6faf091a72e13786"
+    YEUOIDO_SCORE_ADDRESS = "cx53f2bd89ec721f605b9bcead9752f722f4cac7e7"
 
     pp = pprint.PrettyPrinter(indent=4)
 
@@ -53,7 +50,7 @@ class LiquidICXTest(IconIntegrateTestBase):
             cls._score_address = LiquidICXTest.LOCAL_SCORE_ADDRESS
         else:
             cls._wallet = KeyWallet.load("../../keystore_test3", "test3_Account")
-            cls._wallet2 = KeyWallet.load("../../keystore_test1", "test1_Account")
+            cls._wallet2 = KeyWallet.load("../../keystore_test2", "test2_Account")
             cls._icon_service = IconService(HTTPProvider(LiquidICXTest.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
             cls._score_address = LiquidICXTest.YEUOIDO_SCORE_ADDRESS
 
@@ -106,7 +103,10 @@ class LiquidICXTest(IconIntegrateTestBase):
         return tx_result
 
     def _estimate_steps(self, margin) -> int:
-        tx = self._build_transaction(type_="read", method="getStepCosts", to=LiquidICXTest.GOV_SCORE_ADDRESS, params={})
+        tx = self._build_transaction(type_="read",
+                                     method="getStepCosts",
+                                     to=LiquidICXTest.GOV_SCORE_ADDRESS,
+                                     params={})
         result = self._icon_service.call(tx)
         return int(result["contractCall"], 16) + margin
 
@@ -152,7 +152,7 @@ class LiquidICXTest(IconIntegrateTestBase):
 
         return tx
 
-    def test_get_next_prep_term_IISS(self):
+    def _get_next_prep_term_IISS(self):
         call = self._build_transaction(type_="read",
                                        to=SCORE_INSTALL_ADDRESS,
                                        method="getIISSInfo",
@@ -173,125 +173,133 @@ class LiquidICXTest(IconIntegrateTestBase):
             tx_result = self._deploy_score(self._score_address)
             self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=LiquidICXTest.pp.pformat(tx_result))
 
-    def test_set_next_prep_term(self):
-        paras = {"_next_term": int(self._get_next_prep_term_IISS(), 16) + (43120 * 2)}
-        tx = self._build_transaction(method="setNextTerm", params=paras)
+    def test_0(self):
+        self.assertEqual(self._get_holders(), [])
+        self._join_owner()
+        self.assertEqual(len(self._get_holders()), 1)
+        self._10_join()
+        self.assertEqual(len(self._get_holders()), 11)
+        self._join_owner()
+        self.assertEqual(len(self._get_holders()), 11)
+        owner = self._get_holder()
+        self.assertEqual(owner["transferable"], hex(0), msg=pprint.pformat(owner))
+        self.assertEqual(owner["locked"], hex(2 * 10 * 10 ** 18), msg=pprint.pformat(owner))
+        self.assertEqual(len(owner["join_values"]), 2, msg=pprint.pformat(owner))
+        self.assertEqual(len(owner["join_height"]), 2, msg=pprint.pformat(owner))
+        self.assertEqual(len(owner["next_unlock_height"]), 2, msg=pprint.pformat(owner))
+        self.assertEqual(self._balance_of(), hex(2 * 10 * 10 ** 18), msg=pprint.pformat(owner))
+        self.assertEqual(self._total_supply(), hex(12 * 10 * 10 ** 18), msg=pprint.pformat(owner))
+        self.assertEqual(self._get_staked()["stake"], hex(12 * 10 * 10 ** 18), msg=pprint.pformat(owner))
+        self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pprint.pformat(owner))
+        self._unlock_owner_licx()
+        owner = self._get_holder()
+        self.assertEqual(len(owner["join_values"]), 2, msg=pprint.pformat(owner))
+        self.assertEqual(len(owner["join_height"]), 2, msg=pprint.pformat(owner))
+        self.assertEqual(owner["transferable"], hex(0), msg=pprint.pformat(owner))
+
+    def _join_owner(self):
+        tx = self._build_transaction(method="join", value=10 * 10 ** 18)
         signed_transaction = SignedTransaction(tx, self._wallet)
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
-
-    def test_get_next_prep_term(self):
-        tx = self._build_transaction(method="nextTerm", type_="read")
-        tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
-
-    def test_join(self):
-        tx = self._build_transaction(method="join", value=1)
-        signed_transaction = SignedTransaction(tx, self._wallet)
-        tx_result = self.process_transaction(signed_transaction, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
 
-    def _join_with_new_wallet(self):
-        # create a wallet and transfer 0.1 ICX to it
+    def _join_with_new_created_wallet(self):
+        # create a wallet and transfer 11 ICX to it
         wallet = KeyWallet.create()
-        tx = self._build_transaction(type_="transfer", to=wallet.get_address(), value=10 ** 17)
+        tx = self._build_transaction(type_="transfer", to=wallet.get_address(), value=11 * 10 ** 18)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
         # make a join request
-        tx = self._build_transaction(method="join", from_=wallet.get_address(), params={}, value=10 ** 16)
+        tx = self._build_transaction(method="join", from_=wallet.get_address(), params={}, value=10 * 10 ** 18)
         tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
         return tx_result
 
-    def test_100_join(self):
+    def _10_join(self):
         result = []
-        with ThreadPoolExecutor(max_workers=100) as pool:
-            for it in range(0, 100):
-                tx_res = pool.submit(self._join_with_new_wallet)
+        with ThreadPoolExecutor(max_workers=10) as pool:
+            for it in range(0, 10):
+                tx_res = pool.submit(self._join_with_new_created_wallet)
                 result.append(tx_res)
-        self.assertEqual(100, len(self.test_get_holders()))
 
-    def test_join_with_new_wallet(self):
-        self._join_with_new_wallet()
-
-    def test_get_holders(self):
+    def _get_holders(self):
         tx = self._build_transaction(method="getHolders", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
-        # self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
         return tx_result
 
-    def test_get_holder(self):
-        tx = self._build_transaction(method="getHolder", type_="read")
-        tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
-
-    def test_transfer(self):
+    def _get_holder(self, address=None):
+        address = self._wallet.get_address() if address is None else address
         paras = {
-            "_to": self._wallet2.get_address(),
-            "_value": 1
+            "_address": address
         }
-        tx = self._build_transaction(method="transfer", params=paras)
-        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        tx = self._build_transaction(method="getHolder", type_="read", params=paras)
+        tx_result = self.process_call(tx, self._icon_service)
+        # LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
 
-    def test_remove_holder(self):
-        pass
-        tx = self._build_transaction(method="removeHolder")
-        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+    # def test_transfer(self):
+    #     paras = {
+    #         "_to": self._wallet2.get_address(),
+    #         "_value": 1
+    #     }
+    #     tx = self._build_transaction(method="transfer", params=paras)
+    #     tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+    #     LiquidICXTest.pp.pprint(tx_result)
 
-    def test_balance_of(self):
-        paras = {"_owner": self._wallet.get_address()}
+    def _balance_of(self, address=None):
+        address = self._wallet.get_address() if address is None else address
+        paras = {"_owner": address}
         tx = self._build_transaction(method="balanceOf", params=paras, type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
 
-    def test_total_supply(self):
+    def _total_supply(self):
         tx = self._build_transaction(method="totalSupply", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
 
-    def test_get_staked(self):
+    def _get_staked(self):
         tx = self._build_transaction(method="getStaked", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
 
-    def test_get_delegation(self):
+    def _get_delegation(self):
         tx = self._build_transaction(method="getDelegation", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
 
-    def test_unlock_holder_licx(self):
-        tx = self._build_transaction(method="unlockHolderLicx", type_="write", margin=5000000)
+    def _unlock_owner_licx(self):
+        tx = self._build_transaction(method="unlockLicx", margin=5000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)
+        self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
 
-    def test_get_arrays_count(self):
-        tx = self._build_transaction(method="test", type_="read")
+    def test_getIterationLimit(self):
+        tx = self._build_transaction(method="getIterationLimit", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
 
-    def test_test(self):
-        paras = {"address": "hx0a6d9812218e4507f4224d38dc60450960e7a4ff"}
-        tx = self._build_transaction(method="selectFromHolders", type_="read", params=paras)
+    def test_getIterationLimit2(self):
+        tx = self._build_transaction(method="rewards", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)
 
-    def test_test_123(self):
-        paras = {"id": "69"}
-        tx = self._build_transaction(method="getDelegation", type_="read")
-        tx_result = self.process_call(tx, self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
-
-    def test_queryIscore(self):
-        tx = self._build_transaction(method="queryIScore", type_="read")
-        tx_result = self.process_call(tx, self._icon_service)
+    def test_setIterationLimit(self):
+        paras = {
+            "_value": 20
+        }
+        tx = self._build_transaction(method="setIterationLimit", params=paras)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
 
     def test_distribute(self):
-        tx = self._build_transaction(method="distribute", margin=500000)
+        self.test_score_update()
+        tx = self._build_transaction(method="distribute", margin=10000000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         LiquidICXTest.pp.pprint(tx_result)
 
@@ -342,5 +350,3 @@ class LiquidICXTest(IconIntegrateTestBase):
             'txIndex': 1
         }    
         """
-
-

@@ -59,12 +59,9 @@ class Holder:
                     break
         return unlocked
 
-    def canTransfer(self, next_term: int) -> int:
-        self.unlock()
-        return self.transferable
-
     @property
     def transferable(self) -> int:
+        self.unlock()
         return self._transferable.get()
 
     @transferable.setter
@@ -97,5 +94,5 @@ class Holder:
             "locked": self.locked,
             "join_values": list(self.join_values),
             "join_height": list(self.join_height),
-            "allow_transfer_height": list(self._next_unlock_height),
+            "next_unlock_height": list(self._next_unlock_height),
         }
