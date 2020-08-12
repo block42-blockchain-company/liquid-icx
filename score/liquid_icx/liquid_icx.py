@@ -110,12 +110,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def lockedOf(self, _owner: Address) -> int:
         return Holder(self.db, _owner).locked
 
-    @external
-    def transfer(self, _to: Address, _value: int, _data: bytes = None):
-        if _data is None:
-            _data = b'None'
-        self._transfer(self.msg.sender, _to, _value, _data)
-
     @external(readonly=True)
     def getHolder(self, _address: Address = None) -> dict:
         if _address is None:
@@ -124,8 +118,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @external(readonly=True)
     def getHolders(self) -> list:
-        # TODO: Implement with new signature
-        # def getHolder(self, start: n_id | Address = None, offset: int) -> list
         result = []
         for item in self._holders:
             result.append(item)
@@ -147,18 +139,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def getIterationLimit(self) -> int:
         return self._iteration_limit.get()
 
-    @external(readonly=False)
-    def setIterationLimit(self, _value: int):
-        if self.msg.sender == self.owner:
-            self._iteration_limit.set(_value)
-        else:
-            revert("LiquidICX: Only owner function at current state.")
-
-    @staticmethod
-    def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
-        node_id, value = item
-        return value == kwargs['match']
-
     @external(readonly=True)
     def selectFromHolders(self, address: str) -> list:
         return self._holders.select(0, self.linkedlistdb_sentinel, match=address)
@@ -168,7 +148,51 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return self._holders.node_value(id)
 
     @external
+    def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:
+        """
+        External entry function to send LICX from one wallet to another
+        :param _to: Recipient's wallet
+        :param _value: LICX amount to transer
+        :param _data: Optional information for transfer Event
+        """
+
+        if _data is None:
+            _data = b'None'
+        self._transfer(self.msg.sender, _to, _value, _data)
+
+    @external(readonly=False)
+    def setIterationLimit(self, _value: int) -> None:
+        """
+        Sets the max number of loops in distribute function
+        :param _value: Number of iterations
+        """
+
+        if self.msg.sender == self.owner:
+            self._iteration_limit.set(_value)
+        else:
+            revert("LiquidICX: Only owner function at current state.")
+
+    @staticmethod
+    def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
+        """
+
+        :param db: SCORE's db instance
+        :param item:
+        :param kwargs:
+        :return: True if a match was found
+        """
+
+        node_id, value = item
+        return value == kwargs['match']
+
+    @external
     def unlockLICX(self, address: Address = None) -> int:
+        """
+        Manually unlock a wallets locked LICX
+        :param address: Wallet with locked LICX
+        :return: Amount of LICX that got unlocked
+        """
+
         if address is None:
             address = self.msg.sender
         return Holder(self.db, address).unlock()
@@ -176,15 +200,22 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @payable
     @external
     def join(self) -> None:
+        """
+        External entry point to join the LICX pool
+        """
+
         if self.msg.value < self._min_value_to_get_rewards.get():
             revert("Joining value cannot be less than the minimum join value")
         self._join(self.msg.sender, self.msg.value)
 
     @external
-    def distribute(self):
-        """ Distribute I-Score rewards once per term """
-        if not len(self._holders):
-            revert("LiquidICX: No LICX holders.")
+    def distribute(self) -> None:
+        """
+        Distribute I-Score rewards once per term.
+        Iterate over all wallets >= self._min_value_to_get_rewards and give them their reward share.
+        This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
+        """
+
         if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
             if self._rewards.get() == 0:
                 # claim rewards and re-stake and re-delegate with these
@@ -199,13 +230,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 # get head id for start iteration
                 self._distribute_it.set(self._holders.get_head_node().id)
 
-            it = 0
             cur_id = self._distribute_it.get()
-            while cur_id is not None:
+            for it in range(self._iteration_limit.get()):
                 try:
                     cur_address = self._holders.node_value(cur_id)
                     holder = Holder(self.db, cur_address)
-                    if holder.transferable >= 10 ** 18:
+                    holder.unlock()
+                    if holder.transferable >= self._min_value_to_get_rewards.get():
                         # update balances, only if User has at least 1 LICX
                         holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
                         self._mint(self.msg.sender, holder_rewards, True)
@@ -217,23 +248,51 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                         self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
                         self.Distribute(self.block_height)
                         break
-                    if it >= self._iteration_limit.get():
-                        # save iterator for next distribution call
-                        self._distribute_it.set(cur_id)
-                        break
                     cur_id = self._holders.next(cur_id)
-                    it += 1
                 except LinkedNodeNotFound:
                     self.Debug(f"Node with id {cur_id} does not exist.")
                 except StopIteration:
                     self.Debug("Something went terrible wrong. This should never happen")
+            self._distribute_it.set(cur_id)
         else:
             revert("LiquidICX: Distribute called already this term.")
 
     # ================================================
     #  Internal methods
     # ================================================
-    def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
+    def _join(self, sender: Address, value: int) -> None:
+        """
+        Add a wallet to the LICX pool and issue LICX to it
+        :param sender: Wallet that wants to join
+        :param value: Amount of ICX to join the pool
+        """
+
+        if sender not in self._balances:
+            self._holders.append(str(sender))
+
+        Holder(self.db, sender).update(value)
+        system_score = Utils.system_score_interface()
+        system_score.setStake(self.getStaked()["stake"] + value)
+
+        delegation_info: Delegation = {
+            "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
+            "value": self.getDelegation()["totalDelegated"] + value
+        }
+
+        system_score.setDelegation([delegation_info])
+
+        self._mint(sender, value)
+        self.Join(sender, value)
+
+    def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
+        """
+        Send LICX from one wallet to another
+        :param _from: Sender's wallet
+        :param _to: Recipient's wallet
+        :param _value: To be transferred LICX
+        :param _data: Optional data for Event
+        """
+
         # Checks the sending value and balance.
         if _value < 0:
             revert("LiquidICX: Transferring value cannot be less than zero.")
@@ -273,14 +332,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.Transfer(_from, _to, _value, _data)
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
 
-    def _mint(self, _account: Address, _amount: int, _internal: bool = False):
-        self._balances[_account] = self._balances[_account] + _amount
-        self._total_supply.set(self.totalSupply() + _amount)
+    def _burn(self, _account: Address, _amount: int) -> None:
+        """
+        Burn (destroy) a wallet's LICX
+        :param _account: Wallet
+        :param _amount: to be burned LICX
+        """
 
-        if _internal:
-            self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
-
-    def _burn(self, _account: Address, _amount: int):
         if _account == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: burn from the zero address")
         if self._balances[_account] - _amount < 0:
@@ -293,20 +351,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')
 
-    def _join(self, sender: Address, value: int) -> None:
-        if sender not in self._balances:
-            self._holders.append(str(sender))
+    def _mint(self, _account: Address, _amount: int, _internal: bool = False) -> None:
+        """
+        Issue new LICX to a wallet
+        :param _account: wallet
+        :param _amount: Amount of LICX
+        :param _internal: Whether the LICX come from rewards or not
+        """
 
-        Holder(self.db, sender).update(value)
-        system_score = Utils.system_score_interface()
-        system_score.setStake(self.getStaked()["stake"] + value)
+        self._balances[_account] = self._balances[_account] + _amount
+        self._total_supply.set(self.totalSupply() + _amount)
 
-        delegation_info: Delegation = {
-            "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
-            "value": self.getDelegation()["totalDelegated"] + value
-        }
-
-        system_score.setDelegation([delegation_info])
-
-        self._mint(sender, value)
-        self.Join(sender, value)
+        if _internal:
+            self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
