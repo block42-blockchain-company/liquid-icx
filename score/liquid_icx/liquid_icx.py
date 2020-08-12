@@ -1,11 +1,11 @@
 from iconservice import *
 from .scorelib.consts import *
-from .Holder import Holder
+from .holder import Holder
 from .interfaces.irc_2_interface import *
 from .interfaces.token_fallback_interface import *
 from .interfaces.system_score_interface import *
 from .scorelib.linked_list import *
-from .scorelib.Utils import *
+from .scorelib.utils import *
 
 
 class Delegation(TypedDict):
@@ -50,7 +50,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # LICX variables
         self._holders = LinkedListDB("holders", db, str)
 
-        self._min_value_to_get_rewards = VarDB("min_join_value", db, int)
+        self._min_value_to_get_rewards = VarDB("min_value_to_get_rewards", db, int)
 
         self._rewards = VarDB("rewards", db, int)
 
@@ -168,7 +168,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return self._holders.node_value(id)
 
     @external
-    def unlockLicx(self, address: Address = None) -> int:
+    def unlockLICX(self, address: Address = None) -> int:
         if address is None:
             address = self.msg.sender
         return Holder(self.db, address).unlock()
