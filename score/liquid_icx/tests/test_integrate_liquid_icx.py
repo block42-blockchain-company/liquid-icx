@@ -1,7 +1,7 @@
 import json
 import logging
 import os, sys
-import pprint
+import pprint as pp
 import fileinput
 from concurrent.futures.thread import ThreadPoolExecutor
 
@@ -20,7 +20,7 @@ DIR_PATH = os.path.abspath(os.path.dirname(__file__))
 class LiquidICXTest(IconIntegrateTestBase):
     SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
 
-    FORCE_DEPLOY = False
+    FORCE_DEPLOY = True
     # Change to True, if you want to deploy a new SCORE for testing
     LOCAL_NETWORK_TEST = False
     TEST_WITH_FAKE_SYS_SCORE = False
@@ -34,9 +34,9 @@ class LiquidICXTest(IconIntegrateTestBase):
     FAKE_SYS_SCORE_YEOUIDO = "cx2b01010a92bf78ee464be0b5eff94676e95cd757"
 
     YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    YEUOIDO_SCORE_ADDRESS = "cx53f2bd89ec721f605b9bcead9752f722f4cac7e7"
+    YEUOIDO_SCORE_ADDRESS = "cx054ad2db4d2c39646b975629e8190e65a674e80f"
 
-    pp = pprint.PrettyPrinter(indent=4)
+    pp = pp.PrettyPrinter(indent=4)
 
     @classmethod
     def setUpClass(cls):
@@ -173,7 +173,7 @@ class LiquidICXTest(IconIntegrateTestBase):
             tx_result = self._deploy_score(self._score_address)
             self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=LiquidICXTest.pp.pformat(tx_result))
 
-    def test_0(self):
+    def test_0_join_delegate_stake(self):
         self.assertEqual(self._get_holders(), [])
         self._join_owner()
         self.assertEqual(len(self._get_holders()), 1)
@@ -182,26 +182,32 @@ class LiquidICXTest(IconIntegrateTestBase):
         self._join_owner()
         self.assertEqual(len(self._get_holders()), 11)
         owner = self._get_holder()
-        self.assertEqual(owner["transferable"], hex(0), msg=pprint.pformat(owner))
-        self.assertEqual(owner["locked"], hex(2 * 10 * 10 ** 18), msg=pprint.pformat(owner))
-        self.assertEqual(len(owner["join_values"]), 2, msg=pprint.pformat(owner))
-        self.assertEqual(len(owner["join_height"]), 2, msg=pprint.pformat(owner))
-        self.assertEqual(len(owner["next_unlock_height"]), 2, msg=pprint.pformat(owner))
-        self.assertEqual(self._balance_of(), hex(2 * 10 * 10 ** 18), msg=pprint.pformat(owner))
-        self.assertEqual(self._total_supply(), hex(12 * 10 * 10 ** 18), msg=pprint.pformat(owner))
-        self.assertEqual(self._get_staked()["stake"], hex(12 * 10 * 10 ** 18), msg=pprint.pformat(owner))
-        self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pprint.pformat(owner))
+        self.assertEqual(owner["transferable"], hex(0), msg=pp.pformat(owner))
+        self.assertEqual(owner["locked"], hex(2 * 10 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
+        self.assertEqual(len(owner["next_unlock_height"]), 2, msg=pp.pformat(owner))
+        # self.assertEqual(self._balance_of(), hex(2 * 10 * 10 ** 18), msg=pp.pformat(owner))
+        # self.assertEqual(self._total_supply(), hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_staked()["stake"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self._unlock_owner_licx()
         owner = self._get_holder()
-        self.assertEqual(len(owner["join_values"]), 2, msg=pprint.pformat(owner))
-        self.assertEqual(len(owner["join_height"]), 2, msg=pprint.pformat(owner))
-        self.assertEqual(owner["transferable"], hex(0), msg=pprint.pformat(owner))
+        self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
+        self.assertEqual(owner["transferable"], hex(0), msg=pp.pformat(owner))
 
-    def _join_owner(self):
+    def test_1(self):
+        self._join_owner()
+        self.assertEqual(len(self._get_holders()), 1)
+        transfer_tx = self._transfer_from_to(self._wallet, to=self._wallet2.get_address())
+        self.assertEqual(transfer_tx["status"], 0, msg=pp.pformat(transfer_tx))
+        self.assertEqual(transfer_tx["failure"]["message"], "LiquidICX: You don't have any transferable LICX yet.")
+        self.replace_in_consts_py()
+
+    def _join_owner(self, value: int = None):
         tx = self._build_transaction(method="join", value=10 * 10 ** 18)
         signed_transaction = SignedTransaction(tx, self._wallet)
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
-        # LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)∂
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
 
     def _join_with_new_created_wallet(self):
@@ -226,6 +232,7 @@ class LiquidICXTest(IconIntegrateTestBase):
     def _get_holders(self):
         tx = self._build_transaction(method="getHolders", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
+        # LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
     def _get_holder(self, address=None):
@@ -238,14 +245,16 @@ class LiquidICXTest(IconIntegrateTestBase):
         # LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
-    # def test_transfer(self):
-    #     paras = {
-    #         "_to": self._wallet2.get_address(),
-    #         "_value": 1
-    #     }
-    #     tx = self._build_transaction(method="transfer", params=paras)
-    #     tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-    #     LiquidICXTest.pp.pprint(tx_result)
+    def _transfer_from_to(self, from_: KeyWallet, to: str = None):
+        to = self._wallet2.get_address() if to is None else to
+        paras = {
+            "_to": to,
+            "_value": 10 ** 18
+        }
+        tx = self._build_transaction(method="transfer", params=paras, from_=from_.get_address())
+        tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
+        # LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
 
     def _balance_of(self, address=None):
         address = self._wallet.get_address() if address is None else address
@@ -270,11 +279,11 @@ class LiquidICXTest(IconIntegrateTestBase):
     def _get_delegation(self):
         tx = self._build_transaction(method="getDelegation", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        # LiquidICXTest.pp.pprint(tx_result)
+        LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
     def _unlock_owner_licx(self):
-        tx = self._build_transaction(method="unlockLicx", margin=5000000)
+        tx = self._build_transaction(method="unlockLICX", margin=5000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         # LiquidICXTest.pp.pprint(tx_result)
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
@@ -299,9 +308,9 @@ class LiquidICXTest(IconIntegrateTestBase):
 
     def test_distribute(self):
         self.test_score_update()
-        tx = self._build_transaction(method="distribute", margin=10000000000)
+        tx = self._build_transaction(method="distribute", margin=100000000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-        LiquidICXTest.pp.pprint(tx_result)
+        # LiquidICXTest.pp.pprint(tx_result)
 
     def _test_query_iscore(self):
         paras = {

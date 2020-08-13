@@ -53,6 +53,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._min_value_to_get_rewards = VarDB("min_value_to_get_rewards", db, int)
 
         self._rewards = VarDB("rewards", db, int)
+        self._new_unlocked_total = VarDB("new_unlocked_total", db, int)
 
         self._last_distributed_height = VarDB("last_distributed_height", db, int)
 
@@ -72,6 +73,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._total_supply.set(0)
         self._decimals.set(_decimals)
+
+        # We do not want to distribute the first < two terms, when SCORE is created
+        self._last_distributed_height.set(self._system_score.getIISSInfo()["nextPRepTerm"] + TERM_LENGTH)
 
         self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
@@ -215,38 +219,29 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Iterate over all wallets >= self._min_value_to_get_rewards and give them their reward share.
         This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
         """
-
         if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
-            if self._rewards.get() == 0:
-                # claim rewards and re-stake and re-delegate with these
-                self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
-                self._system_score.claimIScore()
-                self._system_score.setStake(self._system_score.getStake(self.address)["stake"] + self._rewards.get())
-                delegation: Delegation = {
-                    "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
-                    "value": self.getDelegation()["totalDelegated"] + self._rewards.get()
-                }
-                self._system_score.setDelegation([delegation])
-                # get head id for start iteration
-                self._distribute_it.set(self._holders.get_head_node().id)
+            if not self._rewards.get():
+                self._redelegate()
 
             cur_id = self._distribute_it.get()
             for it in range(self._iteration_limit.get()):
                 try:
                     cur_address = self._holders.node_value(cur_id)
                     holder = Holder(self.db, cur_address)
-                    holder.unlock()
-                    if holder.transferable >= self._min_value_to_get_rewards.get():
-                        # update balances, only if User has at least 1 LICX
+                    # Distribute only to address which have already the LICX unlocked ( more than 2 terms )
+                    # We decided to distribute only to wallets which have at least 10 LICX, to avoid spam/attacks.
+                    holder_rewards = 0
+                    if holder.transferable >= self._min_value_to_get_rewards.get() and self._total_supply.get():
+                        # Reward formula:
                         holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
-                        self._mint(self.msg.sender, holder_rewards, True)
                         holder.transferable += holder_rewards
+                    # After distribution the address will unlock LICX, if they have any and update the balances[holder]
+                    holder_unlocked = holder.unlock()
+                    self._new_unlocked_total.set(self._new_unlocked_total.get() + holder_unlocked)
+                    self._balances[Address.from_string(cur_address)] = \
+                        self._balances[Address.from_string(cur_address)] + holder_unlocked + holder_rewards
                     if cur_id == self._holders.get_tail_node().id:
-                        # distribution finished, reset stuff
-                        self._rewards.set(0)
-                        self._distribute_it.set(0)
-                        self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
-                        self.Distribute(self.block_height)
+                        self._endDistribution()
                         break
                     cur_id = self._holders.next(cur_id)
                 except LinkedNodeNotFound:
@@ -260,6 +255,34 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     # ================================================
     #  Internal methods
     # ================================================
+    def _redelegate(self):
+        """
+        Claim rewards and re-stake and re-delegate with these.
+        """
+
+        self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
+        self._system_score.claimIScore()
+        self._system_score.setStake(self._system_score.getStake(self.address)["stake"] + self._rewards.get())
+        delegation: Delegation = {
+            "address": PREP_ADDRESS,
+            "value": self.getDelegation()["totalDelegated"] + self._rewards.get()
+        }
+        self._system_score.setDelegation([delegation])
+        # get head id for start iteration
+        self._distribute_it.set(self._holders.get_head_node().id)
+
+    def _endDistribution(self):
+        """
+        The function sets the following VarDB to the default state and updates the total supply of LICX.
+        """
+
+        self._total_supply.set(self.totalSupply() + self._rewards.get() + self._new_unlocked_total.get())
+        self._rewards.set(0)
+        self._new_unlocked_total.set(0)
+        self._distribute_it.set(0)
+        self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
+        self.Distribute(self.block_height)
+
     def _join(self, sender: Address, value: int) -> None:
         """
         Add a wallet to the LICX pool and issue LICX to it
@@ -267,10 +290,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         :param value: Amount of ICX to join the pool
         """
 
-        if sender not in self._balances:
-            self._holders.append(str(sender))
+        node_id = None
+        holder = Holder(self.db, sender)
+        if holder.node_id == 0:
+            node_id = self._holders.append(str(sender))
 
-        Holder(self.db, sender).update(value)
+        holder.update(value, node_id)
+
         system_score = Utils.system_score_interface()
         system_score.setStake(self.getStaked()["stake"] + value)
 
@@ -281,7 +307,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         system_score.setDelegation([delegation_info])
 
-        self._mint(sender, value)
+        # self._mint(sender, value)
         self.Join(sender, value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
@@ -304,9 +330,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         sender = Holder(self.db, _from)
         receiver = Holder(self.db, _to)
 
-        if len(sender.join_values):
-            sender.unlock()
-
         if not sender.transferable:
             revert("LiquidICX: You don't have any transferable LICX yet.")
 
@@ -314,10 +337,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._balances[_from] = self._balances[_from] - _value
 
         if sender.transferable < self._min_value_to_get_rewards.get() and sender.locked == 0:
-            self.Debug("TODO: remove user from holders.")
+            self._holders.remove(sender.node_id)
+            sender.node_id = 0
 
-        if _to not in self._balances:
-            self._holders.append(_to)
+        if not receiver.node_id and _value >= self._min_value_to_get_rewards.get():
+            node_id = self._holders.append(_to)
+            receiver.node_id = node_id
 
         receiver.transferable = receiver.transferable + _value
         self._balances[_to] = self._balances[_to] + _value

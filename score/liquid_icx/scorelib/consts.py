@@ -32,3 +32,5 @@ TERM_LENGTH = 43120
 FAKE_SYSTEM_CONTRACT_LOCAL = Address.from_string('cx7c0f2d7d4253a230177bf95b897e0321ac5e43d1')
 FAKE_SYSTEM_CONTRACT_YEOUIDO = Address.from_string('cx2b01010a92bf78ee464be0b5eff94676e95cd757')
 
+
+PREP_ADDRESS = Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f")

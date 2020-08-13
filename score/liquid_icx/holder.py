@@ -15,13 +15,20 @@ class Holder:
         self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
         self._next_unlock_height = ArrayDB("next_unlock_height_" + str(_address), db, value_type=int)
 
-    def update(self, join_amount: int):
+        # Holders ID
+        self._node_id = VarDB("holder_id_" + str(_address) , db, value_type=int)
+
+    def update(self, join_amount: int, node_id: int = None):
         """
         Adds new values to the wallets join queues
+        :param node_id: Id in holder linked list
         :param join_amount: amount of ICX that a wallet sent
         """
         if len(self._join_values) > 10:
             revert("LiquidICX: Wallet tries to join more than 10 times in 2 terms. This is considered as spam")
+
+        if self.node_id == 0:
+            self._node_id.set(node_id)
 
         iiss_info = Utils.system_score_interface().getIISSInfo()
 
@@ -30,17 +37,7 @@ class Holder:
 
         self.locked = self.locked + join_amount
 
-    def delete(self):
-        """
-        Deletes wallet's Holder values
-        """
 
-        while self._join_values:
-            self._join_values.pop()
-            self._next_unlock_height.pop()
-
-        self.locked = 0
-        self.transferable = 0
 
     def unlock(self) -> int:
         """
@@ -87,6 +84,14 @@ class Holder:
     @property
     def allow_transfer_height(self) -> ArrayDB:
         return self._next_unlock_height
+
+    @property
+    def node_id(self):
+        return self._node_id.get()
+
+    @node_id.setter
+    def node_id(self, value):
+        self._node_id.set(value)
 
     def serialize(self) -> dict:
         return {
