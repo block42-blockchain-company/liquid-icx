@@ -2,7 +2,7 @@ from iconservice import *
 from .scorelib.consts import *
 from .holder import Holder
 from .interfaces.irc_2_interface import *
-from .interfaces.token_fallback_interface import *
+from .interfaces.token_fallback_interface import TokenFallbackInterface
 from .interfaces.system_score_interface import *
 from .scorelib.linked_list import *
 from .scorelib.utils import *
@@ -17,14 +17,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     # ================================================
     #  Event logs
     # ================================================
-    @eventlog(indexed=2)
-    def DebugInt(self, int1: int, int2: int):
-        pass
-
-    @eventlog(indexed=1)
-    def Debug(self, str1: str):
-        pass
-
     @eventlog(indexed=2)
     def Join(self, _from: Address, _value: int):
         pass
@@ -75,7 +67,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._decimals.set(_decimals)
 
         # We do not want to distribute the first < two terms, when SCORE is created
-        self._last_distributed_height.set(self._system_score.getIISSInfo()["nextPRepTerm"] + TERM_LENGTH)
+        self._last_distributed_height.set(int(self._system_score.getIISSInfo()["nextPRepTerm"], 16))
 
         self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
@@ -124,7 +116,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def getHolders(self) -> list:
         result = []
         for item in self._holders:
-            result.append(item)
+            result.append(item[1])
         return result
 
     @external(readonly=True)
@@ -164,17 +156,19 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             _data = b'None'
         self._transfer(self.msg.sender, _to, _value, _data)
 
-    @external(readonly=False)
-    def setIterationLimit(self, _value: int) -> None:
+    @external
+    def setIterationLimit(self, _iteration_limit: int) -> None:
         """
         Sets the max number of loops in distribute function
         :param _value: Number of iterations
         """
 
-        if self.msg.sender == self.owner:
-            self._iteration_limit.set(_value)
-        else:
+        if self.msg.sender != self.owner:
             revert("LiquidICX: Only owner function at current state.")
+        if _iteration_limit <= 0:
+            revert("LiquidICX: 'iteration limit' has to be > 0.")
+
+        self._iteration_limit.set(_iteration_limit)
 
     @staticmethod
     def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
@@ -188,18 +182,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         node_id, value = item
         return value == kwargs['match']
-
-    @external
-    def unlockLICX(self, address: Address = None) -> int:
-        """
-        Manually unlock a wallets locked LICX
-        :param address: Wallet with locked LICX
-        :return: Amount of LICX that got unlocked
-        """
-
-        if address is None:
-            address = self.msg.sender
-        return Holder(self.db, address).unlock()
 
     @payable
     @external
@@ -219,38 +201,34 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Iterate over all wallets >= self._min_value_to_get_rewards and give them their reward share.
         This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
         """
-        if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
+
+        if self._last_distributed_height.get() < int(self._system_score.getPRepTerm()["startBlockHeight"], 16):
             if not self._rewards.get():
                 self._redelegate()
 
             cur_id = self._distribute_it.get()
             for it in range(self._iteration_limit.get()):
-                try:
-                    cur_address = self._holders.node_value(cur_id)
-                    holder = Holder(self.db, cur_address)
-                    # Distribute only to address which have already the LICX unlocked ( more than 2 terms )
-                    # We decided to distribute only to wallets which have at least 10 LICX, to avoid spam/attacks.
-                    holder_rewards = 0
-                    if holder.transferable >= self._min_value_to_get_rewards.get() and self._total_supply.get():
-                        # Reward formula:
-                        holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
-                        holder.transferable += holder_rewards
-                    # After distribution the address will unlock LICX, if they have any and update the balances[holder]
-                    holder_unlocked = holder.unlock()
-                    self._new_unlocked_total.set(self._new_unlocked_total.get() + holder_unlocked)
-                    self._balances[Address.from_string(cur_address)] = \
-                        self._balances[Address.from_string(cur_address)] + holder_unlocked + holder_rewards
-                    if cur_id == self._holders.get_tail_node().id:
-                        self._endDistribution()
-                        break
-                    cur_id = self._holders.next(cur_id)
-                except LinkedNodeNotFound:
-                    self.Debug(f"Node with id {cur_id} does not exist.")
-                except StopIteration:
-                    self.Debug("Something went terrible wrong. This should never happen")
+                cur_address = self._holders.node_value(cur_id)
+                holder = Holder(self.db, cur_address)
+                # Distribute only to address which have already the LICX unlocked ( more than 2 terms )
+                # We decided to distribute only to wallets which have at least 10 LICX, to avoid spam/attacks.
+                holder_rewards = 0
+                if holder.transferable >= self._min_value_to_get_rewards.get() and self._total_supply.get():
+                    # Reward formula:
+                    holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
+                    holder.transferable += holder_rewards
+                # After distribution the address will unlock LICX, if they have any and update the balances[holder]
+                holder_unlocked = holder.unlock()
+                self._new_unlocked_total.set(self._new_unlocked_total.get() + holder_unlocked)
+                self._balances[Address.from_string(cur_address)] = \
+                    self._balances[Address.from_string(cur_address)] + holder_unlocked + holder_rewards
+                if cur_id == self._holders.get_tail_node().id:
+                    self._endDistribution()
+                    break
+                cur_id = self._holders.next(cur_id)
             self._distribute_it.set(cur_id)
         else:
-            revert("LiquidICX: Distribute called already this term.")
+            revert("LiquidICX: Distribute was already called this term.")
 
     # ================================================
     #  Internal methods
@@ -260,12 +238,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Claim rewards and re-stake and re-delegate with these.
         """
 
-        self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
+        self._rewards.set(int(self._system_score.queryIScore(self.address)["estimatedICX"], 16))
         self._system_score.claimIScore()
-        self._system_score.setStake(self._system_score.getStake(self.address)["stake"] + self._rewards.get())
+        self._system_score.setStake(int(self._system_score.getStake(self.address)["stake"], 16) + self._rewards.get())
         delegation: Delegation = {
             "address": PREP_ADDRESS,
-            "value": self.getDelegation()["totalDelegated"] + self._rewards.get()
+            "value": int(self.getDelegation()["totalDelegated"], 16) + self._rewards.get()
         }
         self._system_score.setDelegation([delegation])
         # get head id for start iteration
@@ -280,7 +258,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._rewards.set(0)
         self._new_unlocked_total.set(0)
         self._distribute_it.set(0)
-        self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
+        self._last_distributed_height.set(int(self._system_score.getPRepTerm()["startBlockHeight"], 16))
         self.Distribute(self.block_height)
 
     def _join(self, sender: Address, value: int) -> None:
@@ -298,11 +276,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         holder.update(value, node_id)
 
         system_score = Utils.system_score_interface()
-        system_score.setStake(self.getStaked()["stake"] + value)
+        system_score.setStake(int(self.getStaked()["stake"], 16) + value)
 
         delegation_info: Delegation = {
-            "address": Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"),
-            "value": self.getDelegation()["totalDelegated"] + value
+            "address": PREP_ADDRESS,
+            "value": int(self.getDelegation()["totalDelegated"], 16) + value
         }
 
         system_score.setDelegation([delegation_info])
@@ -330,18 +308,15 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         sender = Holder(self.db, _from)
         receiver = Holder(self.db, _to)
 
-        if not sender.transferable:
-            revert("LiquidICX: You don't have any transferable LICX yet.")
-
         sender.transferable = sender.transferable - _value
         self._balances[_from] = self._balances[_from] - _value
 
-        if sender.transferable < self._min_value_to_get_rewards.get() and sender.locked == 0:
+        if sender.node_id and sender.transferable < self._min_value_to_get_rewards.get() and sender.locked == 0:
             self._holders.remove(sender.node_id)
             sender.node_id = 0
 
-        if not receiver.node_id and _value >= self._min_value_to_get_rewards.get():
-            node_id = self._holders.append(_to)
+        if not receiver.node_id and receiver.transferable + _value >= self._min_value_to_get_rewards.get():
+            node_id = self._holders.append(str(_to))
             receiver.node_id = node_id
 
         receiver.transferable = receiver.transferable + _value
