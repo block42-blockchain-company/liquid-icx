@@ -24,8 +24,8 @@ class Holder:
         :param node_id: Id in holder linked list
         :param join_amount: amount of ICX that a wallet sent
         """
+
         if len(self._join_values) >= 10:
-            revert(str(len(self.join_values)))
             revert("LiquidICX: Wallet tries to join more than 10 times in 2 terms. This is considered as spam")
 
         if self.node_id == 0:
