@@ -1,6 +1,7 @@
 from iconservice import *
 from .irc_2_interface import IRC2TokenStandard
 
+
 # An interface of tokenFallback.
 # Receiving SCORE that has implemented this interface can handle
 # the receiving or further routine.

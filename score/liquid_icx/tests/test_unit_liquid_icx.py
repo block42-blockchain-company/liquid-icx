@@ -2,10 +2,12 @@ from ..liquid_icx import LiquidICX
 from iconservice import *
 from tbears.libs.scoretest.score_test_case import ScoreTestCase
 
+
 #
 # Basic Unit tests for LiquidICX.
 #
 class TestLiquidICX(ScoreTestCase):
+    MIN_VALUE_TO_GET_REWARDS = 10 * 10 ** 18
 
     def setUp(self):
         super().setUp()
@@ -23,6 +25,23 @@ class TestLiquidICX(ScoreTestCase):
     def test_totalSupply(self):
         self.assertEqual(self.score.totalSupply(), 0)
 
-    #def test_tranfser(self):
-        # self.assertEqual(self.score.Transfer(self.test_account2, 100), )
-        # self.assertEqual(self.score.Transfer(self.test_account2, 100), )
+    def test_join(self):
+        """
+        Assert transferable & locked
+        Join
+        Assert transferable & locked
+        Put one term in advance
+        Assert t & l
+        Put another term forward
+        Assert t & l
+        """
+
+        self.assertEqual(self.score.balanceOf(self.test_account1), 0)
+
+        self.set_msg(self.test_account1, self.MIN_VALUE_TO_GET_REWARDS)
+        self.score.join()
+        #self.assertEqual(self.score.balanceOf(self.test_account1), min_value_to_get_rewards)
+
+    def test_join_fail(self):
+        self.set_msg(self.test_account1, self.MIN_VALUE_TO_GET_REWARDS - 1)
+        self.assertRaises(IconScoreException, self.score.join)
