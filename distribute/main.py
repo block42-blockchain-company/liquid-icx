@@ -1,15 +1,16 @@
-import json
 import os
 from time import sleep
 
 from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.builder.transaction_builder import CallTransactionBuilder
+from iconsdk.exception import JSONRPCException
 from iconsdk.icon_service import IconService
 from iconsdk.providers.http_provider import HTTPProvider
+from iconsdk.signed_transaction import SignedTransaction
+from iconsdk.wallet.wallet import KeyWallet
 from tbears.libs.icon_integrate_test import SCORE_INSTALL_ADDRESS
 
 import requests as rq
-from requests.exceptions import HTTPError
 import pprint as pp
 
 # globals
@@ -36,6 +37,15 @@ def getBlockHeight() -> int:
     return icx_service.get_block("latest")["height"]
 
 
+def getTXResult(tx_hash) -> dict:
+    while True:
+        try:
+            return icx_service.get_transaction_result(tx_hash)
+        except JSONRPCException as e:
+            if e.args[0]["message"] == "Pending transaction":
+                sleep(1)
+
+
 def getLastDistributeEventHeight() -> int:
     tracker_endpoint = os.getenv("TRACKER_API") + "/eventLogList"
     params = {"page": 1, "count": 1000, "contractAddr": score_addr}
@@ -50,7 +60,20 @@ def getLastDistributeEventHeight() -> int:
 
 
 def distribute():
-    pass
+    wallet = KeyWallet.load(bytes.fromhex(os.getenv("PRIVATE_KEY")))
+    tx = CallTransactionBuilder() \
+        .from_(wallet.get_address()) \
+        .to(score_addr) \
+        .value(0) \
+        .nid(3) \
+        .step_limit(500000000) \
+        .nonce(100) \
+        .method("distribute") \
+        .params({}) \
+        .build()
+    tx = SignedTransaction(tx, wallet)
+    tx_res = getTXResult(icx_service.send_transaction(tx))
+    pp.pprint(tx_res)
 
 
 def main():
@@ -66,9 +89,10 @@ def main():
             blocks_left = term_bounds["end"] - getBlockHeight()
             if term_bounds["start"] > last_distribute_height and blocks_left < 1000:
                 distribute()
+                sleep(2)  # sleep so tracker has already the last distribute tx
             else:
                 sleep(5)
-        except HTTPError as e:
+        except Exception as e:
             print(e)
 
 
