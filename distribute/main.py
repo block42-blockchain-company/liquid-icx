@@ -1,4 +1,5 @@
 import json
+import os
 from time import sleep
 
 from iconsdk.builder.call_builder import CallBuilder
@@ -8,16 +9,12 @@ from iconsdk.providers.http_provider import HTTPProvider
 from tbears.libs.icon_integrate_test import SCORE_INSTALL_ADDRESS
 
 import requests as rq
+from requests.exceptions import HTTPError
 import pprint as pp
 
-TEST_NET = "https://bicon.net.solidwallet.io/api/v3"
-MAIN_NET = "https://ctz.solidwallet.io"
-
-score_addr = "cx054ad2db4d2c39646b975629e8190e65a674e80f"
-
-events_endpoint = "https://bicon.tracker.solidwallet.io/v3/contract/eventLogList?page=1&count=1000&contractAddr="
-
-icx_service = IconService(HTTPProvider(TEST_NET))
+# globals
+icx_service: IconService
+score_addr: str
 
 
 def getCurrentTermBounds() -> dict:
@@ -40,11 +37,16 @@ def getBlockHeight() -> int:
 
 
 def getLastDistributeEventHeight() -> int:
-    event_list = rq.get(events_endpoint + score_addr).json()["data"]
-    for log in event_list:
-        found = log["eventLog"].find("Distribute")
-        if found > 0:
-            return log["height"]
+    tracker_endpoint = os.getenv("TRACKER_API") + "/eventLogList"
+    params = {"page": 1, "count": 1000, "contractAddr": score_addr}
+    response = rq.get(tracker_endpoint, params=params)
+    if response.status_code == 200:
+        for log in response.json()["data"]:
+            found = log["eventLog"].find("Distribute")
+            if found > 0:
+                return log["height"]
+    else:
+        response.raise_for_status()
 
 
 def distribute():
@@ -52,16 +54,22 @@ def distribute():
 
 
 def main():
+    global icx_service
+    global score_addr
+    icx_service = IconService(HTTPProvider(os.getenv("PROVIDER")))
+    score_addr = os.getenv("SCORE")
+
     while True:
-        term_bounds = getCurrentTermBounds()
-        last_distribute_height = getLastDistributeEventHeight()
-        blocks_left = term_bounds["end"] - getBlockHeight()
-        if term_bounds["start"] > last_distribute_height and blocks_left < 1000:
-            distribute()
-            pass
-        else:
-            print("zzz")
-            sleep(5)
+        try:
+            term_bounds = getCurrentTermBounds()
+            last_distribute_height = getLastDistributeEventHeight()
+            blocks_left = term_bounds["end"] - getBlockHeight()
+            if term_bounds["start"] > last_distribute_height and blocks_left < 1000:
+                distribute()
+            else:
+                sleep(5)
+        except HTTPError as e:
+            print(e)
 
 
 if __name__ == "__main__":
