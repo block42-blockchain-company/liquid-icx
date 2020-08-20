@@ -33,10 +33,6 @@ def getCurrentTermBounds() -> dict:
     }
 
 
-def getBlockHeight() -> int:
-    return icx_service.get_block("latest")["height"]
-
-
 def getTXResult(tx_hash) -> dict:
     while True:
         try:
@@ -86,8 +82,7 @@ def main():
         try:
             term_bounds = getCurrentTermBounds()
             last_distribute_height = getLastDistributeEventHeight()
-            blocks_left = term_bounds["end"] - getBlockHeight()
-            if term_bounds["start"] > last_distribute_height and blocks_left < 1000:
+            if term_bounds["start"] > last_distribute_height:
                 distribute()
                 sleep(2)  # sleep so tracker has already the last distribute tx
             else:
