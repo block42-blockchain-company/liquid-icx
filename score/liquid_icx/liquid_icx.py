@@ -47,6 +47,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._rewards = VarDB("rewards", db, int)
         self._new_unlocked_total = VarDB("new_unlocked_total", db, int)
 
+        self._total_unstake_in_term = VarDB("_total_unstake_in_term", db, int)
+
         self._last_distributed_height = VarDB("last_distributed_height", db, int)
 
         self._distribute_it = VarDB("distribute_it", db, int)
@@ -195,6 +197,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._join(self.msg.sender, self.msg.value)
 
     @external
+    def leave(self, _value: int = None) -> None:
+        """
+        External entry point to leave the LICX pool
+        """
+        if not Holder(self.db, self.msg.sender).transferable:
+            revert("LiquidICX: You don't have any transferable LICX")
+
+        self._leave(self.msg.sender, _value)
+
+    @external
     def distribute(self) -> None:
         """
         Distribute I-Score rewards once per term.
@@ -289,6 +301,14 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         system_score.setDelegation([delegation_info])
 
         self.Join(sender, value)
+
+    def _leave(self, _account: Address, _value: int):
+        if _value is None:
+            _value = Holder(self.db, _account).transferable
+
+        self._total_unstake_in_term.set(self._total_unstake_in_term.get() + _value)
+        Holder(self.db, _account)
+
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """

@@ -15,6 +15,9 @@ class Holder:
         self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
         self._next_unlock_height = ArrayDB("next_unlock_height_" + str(_address), db, value_type=int)
 
+        self._leave_values = ArrayDB("leave_values" + str(_address), db, value_type=int)
+        self._unstaking_periods = ArrayDB("unstaking_periods" + str(_address), db, value_type=int)
+
         # Holders ID
         self._node_id = VarDB("holder_id_" + str(_address) , db, value_type=int)
 
