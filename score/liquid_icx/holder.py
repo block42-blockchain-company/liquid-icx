@@ -34,7 +34,7 @@ class Holder:
         iiss_info = Utils.system_score_interface().getIISSInfo()
 
         self._join_values.put(join_amount)
-        self._next_unlock_height.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
+        self._next_unlock_height.put(int(str(iiss_info["nextPRepTerm"]), 16) + TERM_LENGTH)
 
         self.locked = self.locked + join_amount
 
@@ -46,7 +46,7 @@ class Holder:
 
         unlocked = 0
         if self.locked > 0:
-            next_term = Utils.system_score_interface().getIISSInfo()["nextPRepTerm"]
+            next_term = int(str(Utils.system_score_interface().getIISSInfo()["nextPRepTerm"]), 16)
             while self._next_unlock_height:
                 if next_term > self._next_unlock_height[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]

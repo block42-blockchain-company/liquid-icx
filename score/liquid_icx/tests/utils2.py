@@ -1,6 +1,8 @@
 import os
+from time import sleep
 
 from iconsdk.builder.call_builder import CallBuilder
+from iconsdk.exception import JSONRPCException
 from iconsdk.libs.in_memory_zip import gen_deploy_data_content
 from iconsdk.builder.transaction_builder import DeployTransactionBuilder, CallTransactionBuilder, \
     TransactionBuilder
@@ -14,6 +16,15 @@ from tbears.libs.icon_integrate_test import SCORE_INSTALL_ADDRESS
 #################################################################################################################
 
 TERM_LENGTH = 43120
+
+
+def _getTXResult(self, tx_hash) -> dict:
+    while True:
+        try:
+            return self._icon_service.get_transaction_result(tx_hash)
+        except JSONRPCException as e:
+            if e.args[0]["message"] == "Pending transaction":
+                sleep(1)
 
 
 def _estimateSteps(self, margin) -> int:
@@ -84,7 +95,7 @@ def _testDeploy(self, relative_score_path: str, _from: KeyWallet, params: dict =
 
     signed_transaction = SignedTransaction(transaction, _from)
 
-    tx_result = self.process_transaction(signed_transaction, self._icon_service)
+    tx_result = _getTXResult(self, self._icon_service.send_transaction(signed_transaction)) #self.process_transaction(signed_transaction, self._icon_service)
 
     self.pp.pprint(tx_result)
 
@@ -143,7 +154,7 @@ def _incrementTerm(self, from_: KeyWallet) -> dict:
     tx = _buildTransaction(self, _to=self._score_address_fake_system_score, type="write",
                            from_=from_.get_address(), method="incrementTerm")
     signed_transaction = SignedTransaction(tx, from_)
-    tx_result = self.process_transaction(signed_transaction, self._icon_service)
+    tx_result = _getTXResult(self, self._icon_service.send_transaction(signed_transaction)) #self.process_transaction(signed_transaction, self._icon_service)
     self.pp.pprint(tx_result)
     return tx_result
 
@@ -153,8 +164,9 @@ def _join(self, from_: KeyWallet, value: int) -> dict:
                                 from_=from_.get_address(), method="join",
                                 value=value)
     signed_transaction = SignedTransaction(tx, from_)
-    tx_result = self.process_transaction(signed_transaction, self._icon_service)
+    tx_result = _getTXResult(self, self._icon_service.send_transaction(signed_transaction)) #self.process_transaction(signed_transaction, self._icon_service)
     self.pp.pprint(tx_result)
+
     return tx_result
 
 
@@ -170,7 +182,7 @@ def _distribute(self, from_: KeyWallet) -> dict:
     tx = _buildTransaction(self, _to=self._score_address_licx, type="write",
                            from_=from_.get_address(), method="distribute")
     signed_transaction = SignedTransaction(tx, from_)
-    tx_result = self.process_transaction(signed_transaction, self._icon_service)
+    tx_result = _getTXResult(self, self._icon_service.send_transaction(signed_transaction)) #self.process_transaction(signed_transaction, self._icon_service)
     self.pp.pprint(tx_result)
     return tx_result
 
@@ -180,7 +192,7 @@ def _transfer(self, from_: KeyWallet, _to: str, value: int) -> dict:
     tx = _buildTransaction(self, _to=self._score_address_licx, type="write",
                            from_=from_.get_address(), method="transfer", params=params)
     signed_transaction = SignedTransaction(tx, from_)
-    tx_result = self.process_transaction(signed_transaction, self._icon_service)
+    tx_result = _getTXResult(self, self._icon_service.send_transaction(signed_transaction)) #self.process_transaction(signed_transaction, self._icon_service)
     self.pp.pprint(tx_result)
     return tx_result
 
@@ -190,7 +202,7 @@ def _setIterationLimit(self, from_: KeyWallet, iteration_limit: int) -> dict:
     tx = _buildTransaction(self, _to=self._score_address_licx, type="write",
                            from_=from_.get_address(), method="setIterationLimit", params=params)
     signed_transaction = SignedTransaction(tx, from_)
-    tx_result = self.process_transaction(signed_transaction, self._icon_service)
+    tx_result = _getTXResult(self, self._icon_service.send_transaction(signed_transaction)) #self.process_transaction(signed_transaction, self._icon_service)
     self.pp.pprint(tx_result)
     return tx_result
 
