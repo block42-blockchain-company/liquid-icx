@@ -202,6 +202,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
         """
 
+        if not len(self._holders):
+            revert("LiquidICX: No holders.")
+
         if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
             if not self._rewards.get():
                 self._redelegate()
