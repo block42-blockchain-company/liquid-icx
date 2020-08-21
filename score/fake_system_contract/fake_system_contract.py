@@ -51,7 +51,7 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def getStake(self, address: Address) -> dict:
         return {
-            "stake": hex(self._stake.get())
+            "stake": self._stake.get()
         }
 
     @external
@@ -62,7 +62,7 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def getDelegation(self, address: Address) -> dict:
         return {
-            "totalDelegated": hex(self._delegation.get())
+            "totalDelegated": self._delegation.get()
         }
 
     @external
@@ -72,7 +72,7 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def queryIScore(self, address: Address) -> dict:
         return {
-            "estimatedICX": hex(int(self._delegation.get() / 10))
+            "estimatedICX": int(self._delegation.get() / 10)
         }
 
     @external(readonly=True)
@@ -91,20 +91,7 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def getIISSInfo(self) -> dict:
         return {
-            "blockHeight": "0xa59",
-            "variable": {
-                "irep": "0xa968163f0a57b400000",
-                "rrep": "0x499"
-            },
-            "nextCalculation": "0xa5e",
-            "nextPRepTerm": hex(self._termStartHeight.get() + TERM_LENGTH),
-            "rcResult": {
-                "iscore": "0x25ae31ebace4822a50b",
-                "estimatedICX": "0x9a56d092205400ad",
-                "startBlockHeight": "0xa54",
-                "endBlockHeight": "0xa58",
-                "stateHash": "0x9fe3640299c522648d177775982d783772ebc8cc37af5e19b68b340f2d6cc60b0ef870590c2dda4f742c1c466ab4aec125d257399cc8165d483b3b59eafc1c02"
-            }
+            "nextPRepTerm": self._termStartHeight.get() + TERM_LENGTH,
         }
 
     @external(readonly=True)
@@ -126,8 +113,8 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def getPRepTerm(self) -> dict:
         return {
-            "startBlockHeight": hex(self._termStartHeight.get()),
-            "endBlockHeight": hex(self._termStartHeight.get() + TERM_LENGTH - 1)
+            "startBlockHeight": self._termStartHeight.get(),
+            "endBlockHeight": self._termStartHeight.get() + TERM_LENGTH - 1
         }
 
     @external(readonly=True)

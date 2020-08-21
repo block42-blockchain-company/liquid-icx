@@ -53,11 +53,10 @@ class LiquidICXTest(IconIntegrateTestBase):
             cls._wallets.append(new_wallet)
 
             licx_test = LiquidICXTest()
-            tx = _buildTransaction(licx_test, type="transfer", value=cls.MIN_VALUE_TO_GET_REWARDS * 5,
+            tx = _buildTransaction(licx_test, type="transfer", value=cls.MIN_VALUE_TO_GET_REWARDS * 3,
                                    from_=cls._wallets[0].get_address(), _to=cls._wallets[i].get_address())
             signed_transaction = SignedTransaction(tx, cls._wallets[0])
             cls._icon_service.send_transaction(signed_transaction)
-
         cls.deployFakeSystemSCORE()
         cls.replaceInConsts(cls._score_address_fake_system_score)
 
@@ -372,7 +371,6 @@ class LiquidICXTest(IconIntegrateTestBase):
         holders = _getHolders(self)
         self.assertNotIn(self._wallets[0].get_address(), holders, "Wallet should not be in holders but is!")
         self.assertIn(self._wallets[1].get_address(), holders, "Wallet should be in holders but is not!")
-
 
     def testTransferFail(self):
         # Transfer without joining

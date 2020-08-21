@@ -190,7 +190,7 @@ class LiquidICXTest(IconIntegrateTestBase):
         # self.assertEqual(self._total_supply(), hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(self._get_staked()["stake"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
-        self._unlock_owner_licx()
+        # self._unlock_owner_licx()
         owner = self._get_holder()
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
         self.assertEqual(owner["transferable"], hex(0), msg=pp.pformat(owner))
