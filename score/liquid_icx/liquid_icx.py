@@ -67,7 +67,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._decimals.set(_decimals)
 
         # We do not want to distribute the first < two terms, when SCORE is created
-        self._last_distributed_height.set(int(str(self._system_score.getIISSInfo()["nextPRepTerm"]), 16))
+        self._last_distributed_height.set(self._system_score.getIISSInfo()["nextPRepTerm"])
 
         self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
@@ -202,7 +202,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
         """
 
-        if self._last_distributed_height.get() < int(str(self._system_score.getPRepTerm()["startBlockHeight"]), 16):
+        if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
             if not self._rewards.get():
                 self._redelegate()
 
@@ -238,12 +238,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Claim rewards and re-stake and re-delegate with these.
         """
 
-        self._rewards.set(int(str(self._system_score.queryIScore(self.address)["estimatedICX"]), 16))
+        self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
         self._system_score.claimIScore()
-        self._system_score.setStake(int(str(self._system_score.getStake(self.address)["stake"]), 16) + self._rewards.get())
+        self._system_score.setStake(self._system_score.getStake(self.address)["stake"] + self._rewards.get())
         delegation: Delegation = {
             "address": PREP_ADDRESS,
-            "value": int(str(self.getDelegation()["totalDelegated"]), 16) + self._rewards.get()
+            "value": self.getDelegation()["totalDelegated"] + self._rewards.get()
         }
         self._system_score.setDelegation([delegation])
         # get head id for start iteration
@@ -258,7 +258,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._rewards.set(0)
         self._new_unlocked_total.set(0)
         self._distribute_it.set(0)
-        self._last_distributed_height.set(int(self._system_score.getPRepTerm()["startBlockHeight"], 16))
+        self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
         self.Distribute(self.block_height)
 
     def _join(self, sender: Address, value: int) -> None:
@@ -276,11 +276,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         holder.update(value, node_id)
 
         system_score = Utils.system_score_interface()
-        system_score.setStake(int(str(self.getStaked()["stake"]), 16) + value)
+        system_score.setStake(self.getStaked()["stake"] + value)
 
         delegation_info: Delegation = {
             "address": PREP_ADDRESS,
-            "value": int(str(self.getDelegation()["totalDelegated"]), 16) + value
+            "value": self.getDelegation()["totalDelegated"] + value
         }
 
         system_score.setDelegation([delegation_info])
