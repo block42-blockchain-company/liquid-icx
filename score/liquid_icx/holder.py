@@ -11,19 +11,21 @@ class Holder:
         self._transferable = VarDB("transferable_" + str(_address), db, value_type=int)
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
 
+        self._claimableICX = VarDB("claimableICX_" + _address.__str__(), db, value_type=int)
+
         # Presents how much user deposited to SCORE in chronological order
         self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
-        self._next_unlock_height = ArrayDB("next_unlock_height_" + str(_address), db, value_type=int)
+        self._unlock_heights = ArrayDB("unlock_heights" + str(_address), db, value_type=int)
 
         self._leave_values = ArrayDB("leave_values" + str(_address), db, value_type=int)
-        self._unstaking_periods = ArrayDB("unstaking_periods" + str(_address), db, value_type=int)
+        self._unstake_heights = ArrayDB("unstaking_periods" + str(_address), db, value_type=int)
 
         # Holders ID
-        self._node_id = VarDB("holder_id_" + str(_address) , db, value_type=int)
+        self._node_id = VarDB("holder_id_" + str(_address), db, value_type=int)
 
-    def update(self, join_amount: int, node_id: int = None):
+    def join(self, join_amount: int, node_id: int = None):
         """
-        Adds new values to the wallets join queues
+        Adds new values to the wallet's join queues
         :param node_id: Id in holder linked list
         :param join_amount: amount of ICX that a wallet sent
         """
@@ -37,9 +39,19 @@ class Holder:
         iiss_info = Utils.system_score_interface().getIISSInfo()
 
         self._join_values.put(join_amount)
-        self._next_unlock_height.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
+        self._unlock_heights.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
 
         self.locked = self.locked + join_amount
+
+    def leave(self, _leave_value):
+        if len(self._leave_values) >= 10:
+            revert("LiquidICX: Wallet tries to leave more than 10 times in 2 terms. This is considered as spam")
+
+        block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+        unstake_period = Utils.system_score_interface().estimateUnstakeLockPeriod()["unstakeLockPeriod"]
+
+        self._leave_values.put(_leave_value)
+        self._unstake_heights.put(block_height + unstake_period)
 
     def unlock(self) -> int:
         """
@@ -50,18 +62,32 @@ class Holder:
         unlocked = 0
         if self.locked > 0:
             next_term = Utils.system_score_interface().getIISSInfo()["nextPRepTerm"]
-            while self._next_unlock_height:
-                if next_term > self._next_unlock_height[0]:  # always check and remove the first element only
+            while self._unlock_heights:
+                if next_term > self._unlock_heights[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
                     self.transferable = self.transferable + self._join_values[0]
 
                     unlocked += self._join_values[0]
 
                     Utils.remove_from_array(self._join_values, self._join_values[0])
-                    Utils.remove_from_array(self._next_unlock_height, self._next_unlock_height[0])
+                    Utils.remove_from_array(self._unlock_heights, self._unlock_heights[0])
                 else:
                     break
         return unlocked
+
+    def unstake(self) -> int:
+        unstaked = 0
+        if len(self._unlock_heights):
+            block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+            while self._unstake_heights:
+                if block_height > self._unstake_heights[0]:
+                    self.claimableICX = self.claimableICX + self._leave_values[0]
+
+                    Utils.remove_from_array(self._leave_values, self._leave_values[0])
+                    Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
+                else:
+                    break
+        return unstaked
 
     @property
     def transferable(self) -> int:
@@ -80,12 +106,20 @@ class Holder:
         self._locked.set(value)
 
     @property
+    def claimableICX(self) -> int:
+        return self._claimableICX.get()
+
+    @claimableICX.setter
+    def claimableICX(self, value):
+        self._claimableICX.set(value)
+
+    @property
     def join_values(self) -> ArrayDB:
         return self._join_values
 
     @property
     def allow_transfer_height(self) -> ArrayDB:
-        return self._next_unlock_height
+        return self._unlock_heights
 
     @property
     def node_id(self):
@@ -100,5 +134,5 @@ class Holder:
             "transferable": self.transferable,
             "locked": self.locked,
             "join_values": list(self.join_values),
-            "next_unlock_height": list(self._next_unlock_height),
+            "next_unlock_height": list(self._unlock_heights),
         }

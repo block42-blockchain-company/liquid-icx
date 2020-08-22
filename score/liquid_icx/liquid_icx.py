@@ -288,7 +288,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if holder.node_id == 0:
             node_id = self._holders.append(str(sender))
 
-        holder.update(value, node_id)
+        holder.join(value, node_id)
 
         system_score = Utils.system_score_interface()
         system_score.setStake(self.getStaked()["stake"] + value)
@@ -306,9 +306,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if _value is None:
             _value = Holder(self.db, _account).transferable
 
+        Holder(self.db, _account).leave(_value)
         self._total_unstake_in_term.set(self._total_unstake_in_term.get() + _value)
-        Holder(self.db, _account)
-
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
@@ -386,3 +385,4 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         if _internal:
             self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
+
