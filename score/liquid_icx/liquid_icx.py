@@ -232,11 +232,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     # Reward formula:
                     holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
                     holder.transferable += holder_rewards
+
                 # After distribution the address will unlock LICX, if they have any and update the balances[holder]
                 holder_unlocked = holder.unlock()
                 self._new_unlocked_total.set(self._new_unlocked_total.get() + holder_unlocked)
                 self._balances[Address.from_string(cur_address)] = \
                     self._balances[Address.from_string(cur_address)] + holder_unlocked + holder_rewards
+
+
+                self._total_unstake_in_term.set(self._total_unstake_in_term.get() + holder.leave())
+
                 if cur_id == self._holders.get_tail_node().id:
                     self._endDistribution()
                     break
@@ -306,8 +311,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if _value is None:
             _value = Holder(self.db, _account).transferable
 
-        Holder(self.db, _account).leave(_value)
-        self._total_unstake_in_term.set(self._total_unstake_in_term.get() + _value)
+        Holder(self.db, _account).requestLeave(_value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """

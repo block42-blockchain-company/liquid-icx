@@ -43,15 +43,23 @@ class Holder:
 
         self.locked = self.locked + join_amount
 
-    def leave(self, _leave_value):
+    def requestLeave(self, _leave_value):
         if len(self._leave_values) >= 10:
-            revert("LiquidICX: Wallet tries to leave more than 10 times in 2 terms. This is considered as spam")
-
-        block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
-        unstake_period = Utils.system_score_interface().estimateUnstakeLockPeriod()["unstakeLockPeriod"]
+            revert("LiquidICX: Wallet has already 10 leave requests. This is considered as spam")
 
         self._leave_values.put(_leave_value)
-        self._unstake_heights.put(block_height + unstake_period)
+
+    def leave(self) -> int:
+        leave = 0
+        if len(self._leave_values):
+            block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+            unstake_period = Utils.system_score_interface().estimateUnstakeLockPeriod()["unstakeLockPeriod"]
+
+            for it in self.leave_values:
+                leave = leave + it
+                self._unstake_heights.put(block_height + unstake_period)
+
+        return leave
 
     def unlock(self) -> int:
         """
@@ -75,19 +83,19 @@ class Holder:
                     break
         return unlocked
 
-    def unstake(self) -> int:
-        unstaked = 0
-        if len(self._unlock_heights):
-            block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
-            while self._unstake_heights:
-                if block_height > self._unstake_heights[0]:
-                    self.claimableICX = self.claimableICX + self._leave_values[0]
-
-                    Utils.remove_from_array(self._leave_values, self._leave_values[0])
-                    Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
-                else:
-                    break
-        return unstaked
+    # def unstake(self) -> int:
+    #     unstaked = 0
+    #     if len(self._unlock_heights):
+    #         block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+    #         while self._unstake_heights:
+    #             if block_height > self._unstake_heights[0]:
+    #                 self.claimableICX = self.claimableICX + self._leave_values[0]
+    #
+    #                 Utils.remove_from_array(self._leave_values, self._leave_values[0])
+    #                 Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
+    #             else:
+    #                 break
+    #     return unstaked
 
     @property
     def transferable(self) -> int:
@@ -116,6 +124,10 @@ class Holder:
     @property
     def join_values(self) -> ArrayDB:
         return self._join_values
+
+    @property
+    def leave_values(self) -> ArrayDB:
+        return self._leave_values
 
     @property
     def allow_transfer_height(self) -> ArrayDB:
