@@ -82,7 +82,7 @@ def main():
         try:
             term_bounds = getCurrentTermBounds()
             last_distribute_height = getLastDistributeEventHeight()
-            if term_bounds["start"] > last_distribute_height:
+            if last_distribute_height and term_bounds["start"] > last_distribute_height:
                 distribute()
                 sleep(2)  # sleep so tracker has already the last distribute tx
             else:
