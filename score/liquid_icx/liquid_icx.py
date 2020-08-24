@@ -1,16 +1,12 @@
 from iconservice import *
+
 from .scorelib.consts import *
 from .holder import Holder
 from .interfaces.irc_2_interface import *
 from .interfaces.token_fallback_interface import TokenFallbackInterface
-from .interfaces.system_score_interface import *
 from .scorelib.linked_list import *
 from .scorelib.utils import *
 
-
-class Delegation(TypedDict):
-    address: Address
-    value: int
 
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
@@ -122,8 +118,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return result
 
     @external(readonly=True)
-    def getStaked(self) -> dict:
-        return self._system_score.getStake(self.address)
+    def getStaked(self) -> int:
+        return self._system_score.getStake(self.address)["stake"]
 
     @external(readonly=True)
     def rewards(self) -> int:
@@ -162,7 +158,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def setIterationLimit(self, _iteration_limit: int) -> None:
         """
         Sets the max number of loops in distribute function
-        :param _value: Number of iterations
+        :param _iteration_limit: Number of iterations
         """
 
         if self.msg.sender != self.owner:
@@ -219,7 +215,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
             if not self._rewards.get():
-                self._redelegate()
+                self._claimRewards()
+                # get head id for start iteration
+                self._distribute_it.set(self._holders.get_head_node().id)
 
             cur_id = self._distribute_it.get()
             for it in range(self._iteration_limit.get()):
@@ -239,13 +237,14 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 self._balances[Address.from_string(cur_address)] = \
                     self._balances[Address.from_string(cur_address)] + holder_unlocked + holder_rewards
 
-
                 self._total_unstake_in_term.set(self._total_unstake_in_term.get() + holder.leave())
 
                 if cur_id == self._holders.get_tail_node().id:
+                    self._redelegate()
                     self._endDistribution()
-                    break
+                    return
                 cur_id = self._holders.next(cur_id)
+                # zbrisi iz holderjov, ce je transferable == 0
             self._distribute_it.set(cur_id)
         else:
             revert("LiquidICX: Distribute was already called this term.")
@@ -253,21 +252,24 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     # ================================================
     #  Internal methods
     # ================================================
-    def _redelegate(self):
+    def _claimRewards(self):
         """
-        Claim rewards and re-stake and re-delegate with these.
+        Claim IScore rewards. It is called only once per term, at the start of the cycle.
         """
-
         self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
         self._system_score.claimIScore()
-        self._system_score.setStake(self._system_score.getStake(self.address)["stake"] + self._rewards.get())
+
+    def _redelegate(self):
+        """
+        Re-stake and re-delegate with the rewards claimed at the start of the cycle.
+        """
+        restake_value = self.getStaked() + self._rewards.get() - self._total_unstake_in_term.get()
+        self._system_score.setStake(restake_value)
         delegation: Delegation = {
             "address": PREP_ADDRESS,
-            "value": self.getDelegation()["totalDelegated"] + self._rewards.get()
+            "value": restake_value
         }
         self._system_score.setDelegation([delegation])
-        # get head id for start iteration
-        self._distribute_it.set(self._holders.get_head_node().id)
 
     def _endDistribution(self):
         """
@@ -295,23 +297,26 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         holder.join(value, node_id)
 
-        system_score = Utils.system_score_interface()
-        system_score.setStake(self.getStaked()["stake"] + value)
+        self._system_score.setStake(self.getStaked() + value)
 
         delegation_info: Delegation = {
             "address": PREP_ADDRESS,
             "value": self.getDelegation()["totalDelegated"] + value
         }
 
-        system_score.setDelegation([delegation_info])
-
+        self._system_score.setDelegation([delegation_info])
         self.Join(sender, value)
 
     def _leave(self, _account: Address, _value: int):
+        if _value < 0:
+            revert("LiquidICX: Leaving value cannot be less than zero.")
         if _value is None:
             _value = Holder(self.db, _account).transferable
 
         Holder(self.db, _account).requestLeave(_value)
+
+        self._balances[_account] = self._balances[_account] - _value
+        self._total_supply.set(self._total_supply.get() - _value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
@@ -371,8 +376,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._balances[_account] = self._balances[_account] - _amount
         self._total_supply.set(self.totalSupply() - _amount)
-
-        # TODO  Does it make sense to remove here a holder, if balances[owner] == 0 ?
 
         self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')
 

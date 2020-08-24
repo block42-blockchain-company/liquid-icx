@@ -186,11 +186,8 @@ class LiquidICXTest(IconIntegrateTestBase):
         self.assertEqual(owner["locked"], hex(2 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
         self.assertEqual(len(owner["next_unlock_height"]), 2, msg=pp.pformat(owner))
-        # self.assertEqual(self._balance_of(), hex(2 * 10 * 10 ** 18), msg=pp.pformat(owner))
-        # self.assertEqual(self._total_supply(), hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
-        self.assertEqual(self._get_staked()["stake"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_staked(), hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
-        # self._unlock_owner_licx()
         owner = self._get_holder()
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
         self.assertEqual(owner["transferable"], hex(0), msg=pp.pformat(owner))
@@ -201,7 +198,7 @@ class LiquidICXTest(IconIntegrateTestBase):
         transfer_tx = self._transfer_from_to(self._wallet, to=self._wallet2.get_address())
         self.assertEqual(transfer_tx["status"], 0, msg=pp.pformat(transfer_tx))
         self.assertEqual(transfer_tx["failure"]["message"], "LiquidICX: You don't have any transferable LICX yet.")
-        self.replace_in_consts_py()
+        # self.replace_in_consts_py()
 
     def _join_owner(self, value: int = None):
         tx = self._build_transaction(method="join", value=10 * 10 ** 18)
@@ -282,6 +279,12 @@ class LiquidICXTest(IconIntegrateTestBase):
         LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
+    def _get_staked(self):
+        tx = self._build_transaction(method="getStaked", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
+
     def _unlock_owner_licx(self):
         tx = self._build_transaction(method="unlockLICX", margin=5000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
@@ -307,7 +310,7 @@ class LiquidICXTest(IconIntegrateTestBase):
         LiquidICXTest.pp.pprint(tx_result)
 
     def test_distribute(self):
-        self.test_score_update()
+        # self.test_score_update()
         tx = self._build_transaction(method="distribute", margin=100000000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         # LiquidICXTest.pp.pprint(tx_result)
