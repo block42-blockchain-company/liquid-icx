@@ -182,15 +182,13 @@ class LiquidICXTest(IconIntegrateTestBase):
         self._join_owner()
         self.assertEqual(len(self._get_holders()), 11)
         owner = self._get_holder()
-        self.assertEqual(owner["transferable"], hex(0), msg=pp.pformat(owner))
         self.assertEqual(owner["locked"], hex(2 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
-        self.assertEqual(len(owner["next_unlock_height"]), 2, msg=pp.pformat(owner))
+        self.assertEqual(len(owner["unlock_heights"]), 2, msg=pp.pformat(owner))
         self.assertEqual(self._get_staked(), hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         owner = self._get_holder()
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
-        self.assertEqual(owner["transferable"], hex(0), msg=pp.pformat(owner))
 
     def test_1(self):
         self._join_owner()

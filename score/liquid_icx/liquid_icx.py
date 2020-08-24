@@ -97,10 +97,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return self._balances[_owner]
 
     @external(readonly=True)
-    def transferableOf(self, _owner: Address) -> int:
-        return Holder(self.db, _owner).transferable
-
-    @external(readonly=True)
     def lockedOf(self, _owner: Address) -> int:
         return Holder(self.db, _owner).locked
 
@@ -197,8 +193,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         External entry point to leave the LICX pool
         """
-        if not Holder(self.db, self.msg.sender).transferable:
-            revert("LiquidICX: You don't have any transferable LICX")
+        # if not Holder(self.db, self.msg.sender).transferable:
+        #    revert("LiquidICX: You don't have any transferable LICX")
 
         self._leave(self.msg.sender, _value)
 
@@ -226,10 +222,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 # Distribute only to address which have already the LICX unlocked ( more than 2 terms )
                 # We decided to distribute only to wallets which have at least 10 LICX, to avoid spam/attacks.
                 holder_rewards = 0
-                if holder.transferable >= self._min_value_to_get_rewards.get() and self._total_supply.get():
+                holder_balance = self._balances[Address.from_string(cur_address)]
+                if holder_balance >= self._min_value_to_get_rewards.get() and self._total_supply.get():
                     # Reward formula:
-                    holder_rewards = int(holder.transferable / self._total_supply.get() * self._rewards.get())
-                    holder.transferable += holder_rewards
+                    holder_rewards = int(holder_balance / self._total_supply.get() * self._rewards.get())
+                    holder_balance += holder_rewards
 
                 # After distribution the address will unlock LICX, if they have any and update the balances[holder]
                 holder_unlocked = holder.unlock()
@@ -308,10 +305,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.Join(sender, value)
 
     def _leave(self, _account: Address, _value: int):
+        if _value is None:
+            _value = self._balances[self.msg.sender]
         if _value < 0:
             revert("LiquidICX: Leaving value cannot be less than zero.")
-        if _value is None:
-            _value = Holder(self.db, _account).transferable
 
         Holder(self.db, _account).requestLeave(_value)
 
@@ -338,19 +335,15 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         sender = Holder(self.db, _from)
         receiver = Holder(self.db, _to)
 
-        sender.transferable = sender.transferable - _value
         self._balances[_from] = self._balances[_from] - _value
-
-        if sender.node_id and sender.transferable < self._min_value_to_get_rewards.get() and sender.locked == 0:
+        if sender.node_id and self._balances[_from] < self._min_value_to_get_rewards.get() and sender.locked == 0:
             self._holders.remove(sender.node_id)
             sender.node_id = 0
 
-        if not receiver.node_id and receiver.transferable + _value >= self._min_value_to_get_rewards.get():
+        self._balances[_to] = self._balances[_to] + _value
+        if not receiver.node_id and self._balances[_to] >= self._min_value_to_get_rewards.get():
             node_id = self._holders.append(str(_to))
             receiver.node_id = node_id
-
-        receiver.transferable = receiver.transferable + _value
-        self._balances[_to] = self._balances[_to] + _value
 
         if _to.is_contract:
             # If the recipient is SCORE,

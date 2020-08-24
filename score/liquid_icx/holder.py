@@ -5,12 +5,7 @@ from .scorelib.utils import *
 
 class Holder:
     def __init__(self, db: IconScoreDatabase, _address: Address):
-        # How much is user allowed to transfer
-        # Sum of these two variables should be equal to LiquidICX._balance[user_address]
-        # After two terms were passed, locked becomes transferable
-        self._transferable = VarDB("transferable_" + str(_address), db, value_type=int)
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
-
         self._claimableICX = VarDB("claimableICX_" + _address.__str__(), db, value_type=int)
 
         # Presents how much user deposited to SCORE in chronological order
@@ -73,7 +68,6 @@ class Holder:
             while self._unlock_heights:
                 if next_term > self._unlock_heights[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
-                    self.transferable = self.transferable + self._join_values[0]
 
                     unlocked += self._join_values[0]
 
@@ -83,27 +77,17 @@ class Holder:
                     break
         return unlocked
 
-    # def unstake(self) -> int:
-    #     unstaked = 0
-    #     if len(self._unlock_heights):
-    #         block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
-    #         while self._unstake_heights:
-    #             if block_height > self._unstake_heights[0]:
-    #                 self.claimableICX = self.claimableICX + self._leave_values[0]
-    #
-    #                 Utils.remove_from_array(self._leave_values, self._leave_values[0])
-    #                 Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
-    #             else:
-    #                 break
-    #     return unstaked
+    def claim(self):
+        if len(self._unlock_heights):
+            block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+            while self._unstake_heights:
+                if block_height > self._unstake_heights[0]:
+                    self.claimableICX = self.claimableICX + self._leave_values[0]
 
-    @property
-    def transferable(self) -> int:
-        return self._transferable.get()
-
-    @transferable.setter
-    def transferable(self, value):
-        self._transferable.set(value)
+                    Utils.remove_from_array(self._leave_values, self._leave_values[0])
+                    Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
+                else:
+                    break
 
     @property
     def locked(self) -> int:
@@ -130,8 +114,12 @@ class Holder:
         return self._leave_values
 
     @property
-    def allow_transfer_height(self) -> ArrayDB:
+    def unlock_heights(self) -> ArrayDB:
         return self._unlock_heights
+
+    @property
+    def unstake_heights(self) -> ArrayDB:
+        return self._unstake_heights
 
     @property
     def node_id(self):
@@ -143,8 +131,9 @@ class Holder:
 
     def serialize(self) -> dict:
         return {
-            "transferable": self.transferable,
             "locked": self.locked,
             "join_values": list(self.join_values),
-            "next_unlock_height": list(self._unlock_heights),
+            "unlock_heights": list(self.unlock_heights),
+            "leave_values": list(self.leave_values),
+            "unstake_heights": list(self.unstake_heights)
         }
