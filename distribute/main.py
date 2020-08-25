@@ -99,7 +99,7 @@ def main():
             term_bounds = getCurrentTermBounds()
             last_distribute_height = getLastDistributeEventHeight()
             score_created = getCreatedSCOREHeight()
-            if score_created + (43120 * 2) > term_bounds["start"] and \
+            if score_created + (43120 * 2) < term_bounds["start"] and \
                (last_distribute_height is None or term_bounds["start"] > last_distribute_height):
                 distribute()
                 sleep(2)  # sleep so tracker has already the last distribute tx
