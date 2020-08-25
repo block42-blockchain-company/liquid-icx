@@ -338,16 +338,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         :param _data: Optional data for Event
         """
 
+        sender = Holder(self.db, _from)
+        receiver = Holder(self.db, _to)
+
         # Checks the sending value and balance.
         if _value < 0:
             revert("LiquidICX: Transferring value cannot be less than zero.")
-        if self._balances[_from] < _value:
+        if self._balances[_from] - sender.unstaking < _value:
             revert("LiquidICX: Out of balance")
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
-
-        sender = Holder(self.db, _from)
-        receiver = Holder(self.db, _to)
 
         self._balances[_from] = self._balances[_from] - _value
         if sender.node_id and self._balances[_from] < self._min_value_to_get_rewards.get() and sender.locked == 0:
@@ -399,4 +399,3 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         if _internal:
             self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
-

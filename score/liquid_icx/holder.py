@@ -6,12 +6,14 @@ from .scorelib.utils import *
 class Holder:
     def __init__(self, db: IconScoreDatabase, _address: Address):
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
+        self._unstaking = VarDB("unstaking_" + _address.__str__(), db, value_type=int)
         self._claimableICX = VarDB("claimableICX_" + _address.__str__(), db, value_type=int)
 
         # Presents how much user deposited to SCORE in chronological order
         self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
         self._unlock_heights = ArrayDB("unlock_heights" + str(_address), db, value_type=int)
 
+        # Presents with how much LICX user wants to leave in chronological order
         self._leave_values = ArrayDB("leave_values" + str(_address), db, value_type=int)
         self._unstake_heights = ArrayDB("unstake_heights" + str(_address), db, value_type=int)
 
@@ -40,20 +42,20 @@ class Holder:
 
     def requestLeave(self, _leave_value):
         if len(self._leave_values) >= 10:
-            revert("LiquidICX: Wallet has already 10 leave requests. This is considered as spam")
+            revert("LiquidICX: Wallet has already 10 leave requests. This is considered a spam")
 
         self._leave_values.put(_leave_value)
+        self._unstaking = self.unstaking + _leave_value
 
     def leave(self) -> int:
         leave = 0
-        if len(self._leave_values):
+        if len(self._leave_values) != len(self._unstake_heights):
             block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
             unstake_period = Utils.system_score_interface().estimateUnstakeLockPeriod()["unstakeLockPeriod"]
 
-            for it in self.leave_values:
-                leave = leave + it
+            for it in range(len(self._leave_values), len(self._unstake_heights)):
+                leave = leave + self._leave_values[it]
                 self._unstake_heights.put(block_height + unstake_period)
-
         return leave
 
     def unlock(self) -> int:
@@ -77,17 +79,17 @@ class Holder:
                     break
         return unlocked
 
-    def claim(self):
-        if len(self._unlock_heights):
-            block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
-            while self._unstake_heights:
-                if block_height > self._unstake_heights[0]:
-                    self.claimableICX = self.claimableICX + self._leave_values[0]
-
-                    Utils.remove_from_array(self._leave_values, self._leave_values[0])
-                    Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
-                else:
-                    break
+    # def claim(self):
+    #     if len(self._unlock_heights):
+    #         block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+    #         while self._unstake_heights:
+    #             if block_height > self._unstake_heights[0]:
+    #                 self.claimableICX = self.claimableICX + self._leave_values[0]
+    #
+    #                 Utils.remove_from_array(self._leave_values, self._leave_values[0])
+    #                 Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
+    #             else:
+    #                 break
 
     @property
     def locked(self) -> int:
@@ -96,6 +98,14 @@ class Holder:
     @locked.setter
     def locked(self, value):
         self._locked.set(value)
+
+    @property
+    def unstaking(self) -> int:
+        return self._unstaking.get()
+
+    @unstaking.setter
+    def unstaking(self, value):
+        self._unstaking.set(value)
 
     @property
     def claimableICX(self) -> int:
