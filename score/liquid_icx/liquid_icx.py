@@ -8,13 +8,16 @@ from .scorelib.linked_list import *
 from .scorelib.utils import *
 
 
-
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
     # ================================================
     #  Event logs
     # ================================================
     @eventlog(indexed=2)
     def Join(self, _from: Address, _value: int):
+        pass
+
+    @eventlog(indexed=2)
+    def Leave(self, _from: Address, _value: int):
         pass
 
     @eventlog(indexed=3)
@@ -193,8 +196,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         External entry point to leave the LICX pool
         """
-        # if not Holder(self.db, self.msg.sender).transferable:
-        #    revert("LiquidICX: You don't have any transferable LICX")
+        # if _value is None:
+        # Leave with all LICX
+        # unlocked = Holder(self.db, self.msg.sender).unlock()
+        # self._balances[self.msg.sender] = self._balances[self.msg.sender] + unlocked
+        # _value = self._balances[self.msg.sender]
 
         self._leave(self.msg.sender, _value)
 
@@ -228,13 +234,20 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     holder_rewards = int(holder_balance / self._total_supply.get() * self._rewards.get())
                     holder_balance += holder_rewards
 
-                # After distribution the address will unlock LICX, if they have any and update the balances[holder]
+                # After distribution the address:
+                # - will try to unlock LICX
+                # - will try to leave
                 holder_unlocked = holder.unlock()
-                self._new_unlocked_total.set(self._new_unlocked_total.get() + holder_unlocked)
-                self._balances[Address.from_string(cur_address)] = \
-                    self._balances[Address.from_string(cur_address)] + holder_unlocked + holder_rewards
+                holder_leave = holder.leave()
 
-                self._total_unstake_in_term.set(self._total_unstake_in_term.get() + holder.leave())
+                self._balances[Address.from_string(cur_address)] = \
+                    self._balances[Address.from_string(cur_address)] + \
+                    holder_unlocked + \
+                    holder_rewards - \
+                    holder_leave
+
+                self._new_unlocked_total.set(self._new_unlocked_total.get() + holder_unlocked)
+                self._total_unstake_in_term.set(self._total_unstake_in_term.get() + holder_leave)
 
                 if cur_id == self._holders.get_tail_node().id:
                     self._redelegate()
@@ -242,6 +255,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     return
                 cur_id = self._holders.next(cur_id)
                 # zbrisi iz holderjov, ce je transferable == 0
+
             self._distribute_it.set(cur_id)
         else:
             revert("LiquidICX: Distribute was already called this term.")
@@ -305,15 +319,15 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.Join(sender, value)
 
     def _leave(self, _account: Address, _value: int):
-        if _value is None:
-            _value = self._balances[self.msg.sender]
-        if _value < 0:
-            revert("LiquidICX: Leaving value cannot be less than zero.")
+        if _value <= 0:
+            revert("LiquidICX: Leaving value cannot be equal or less than zero.")
 
         Holder(self.db, _account).requestLeave(_value)
+        self.Leave(_account, _value)
 
-        self._balances[_account] = self._balances[_account] - _value
-        self._total_supply.set(self._total_supply.get() - _value)
+        # Probably we can not do this, because this is considered rewards stealing IMO
+        # self._balances[_account] = self._balances[_account] - _value
+        # self._total_supply.set(self._total_supply.get() - _value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
