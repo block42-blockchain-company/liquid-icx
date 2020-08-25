@@ -43,7 +43,7 @@ def getTXResult(tx_hash) -> dict:
 
 
 def getLastDistributeEventHeight() -> int:
-    tracker_endpoint = os.getenv("TRACKER_API") + "/eventLogList"
+    tracker_endpoint = os.getenv("TRACKER_API") + "contract/eventLogList"
     params = {"page": 1, "count": 1000, "contractAddr": score_addr}
     response = rq.get(tracker_endpoint, params=params)
     if response.status_code == 200:
@@ -51,6 +51,23 @@ def getLastDistributeEventHeight() -> int:
             found = log["eventLog"].find("Distribute")
             if found > 0:
                 return log["height"]
+    else:
+        response.raise_for_status()
+
+
+def getCreatedSCOREHeight() -> int:
+    tracker_endpoint = os.getenv("TRACKER_API") + "contract/info"
+    params = {"addr": score_addr}
+    response = rq.get(tracker_endpoint, params=params)
+    if response.status_code == 200:
+        create_tx = response.json()["data"]["createTx"]
+        tracker_endpoint = os.getenv("TRACKER_API") + "transaction/txDetail"
+        params = {"txHash": create_tx}
+        response = rq.get(tracker_endpoint, params=params)
+        if response.status_code == 200:
+            return response.json()["data"]["height"]
+        else:
+            response.raise_for_status()
     else:
         response.raise_for_status()
 
@@ -77,12 +94,13 @@ def main():
     global score_addr
     icx_service = IconService(HTTPProvider(os.getenv("PROVIDER")))
     score_addr = os.getenv("SCORE")
-
     while True:
         try:
             term_bounds = getCurrentTermBounds()
             last_distribute_height = getLastDistributeEventHeight()
-            if last_distribute_height is None or term_bounds["start"] > last_distribute_height:
+            score_created = getCreatedSCOREHeight()
+            if term_bounds["end"] + 1 - (43120 * 2) > score_created and \
+               (last_distribute_height is None or term_bounds["start"] > last_distribute_height):
                 distribute()
                 sleep(2)  # sleep so tracker has already the last distribute tx
             else:
@@ -93,3 +111,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
