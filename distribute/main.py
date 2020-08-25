@@ -43,7 +43,7 @@ def getTXResult(tx_hash) -> dict:
 
 
 def getLastDistributeEventHeight() -> int:
-    tracker_endpoint = os.getenv("TRACKER_API") + "/eventLogList"
+    tracker_endpoint = os.getenv("TRACKER_API") + "contract/eventLogList"
     params = {"page": 1, "count": 1000, "contractAddr": score_addr}
     response = rq.get(tracker_endpoint, params=params)
     if response.status_code == 200:
@@ -92,11 +92,11 @@ def main():
     global score_addr
     icx_service = IconService(HTTPProvider(os.getenv("PROVIDER")))
     score_addr = os.getenv("SCORE")
-
     while True:
         try:
             term_bounds = getCurrentTermBounds()
             last_distribute_height = getLastDistributeEventHeight()
+            score_created = getCreatedSCOREHeight()
             if score_created + (43120 * 2) < term_bounds["start"] and \
                (last_distribute_height is None or term_bounds["start"] > last_distribute_height):
                 distribute()
