@@ -34,7 +34,7 @@ class LiquidICXTest(IconIntegrateTestBase):
     FAKE_SYS_SCORE_YEOUIDO = "cx2b01010a92bf78ee464be0b5eff94676e95cd757"
 
     YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    YEUOIDO_SCORE_ADDRESS = "cx054ad2db4d2c39646b975629e8190e65a674e80f"
+    YEUOIDO_SCORE_ADDRESS = "cxaff7c697460a6ae3b11780ecddf7dbf0a04865ed"
 
     pp = pp.PrettyPrinter(indent=4)
 
@@ -164,8 +164,8 @@ class LiquidICXTest(IconIntegrateTestBase):
             self._icon_service = IconService(HTTPProvider(LiquidICXTest.LOCAL_TEST_HTTP_ENDPOINT_URI_V3))
         else:
             result = self._icon_service.call(call)
-        LiquidICXTest.pp.pprint(result)
-        # return result['nextPRepTerm']
+        # LiquidICXTest.pp.pprint(result)
+        return result['nextPRepTerm']
 
     def test_score_update(self):
         # update SCORE
@@ -190,19 +190,24 @@ class LiquidICXTest(IconIntegrateTestBase):
         owner = self._get_holder()
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
 
-    def test_1(self):
+    def test_1_join_transfer_leave(self):
         self._join_owner()
         self.assertEqual(len(self._get_holders()), 1)
         transfer_tx = self._transfer_from_to(self._wallet, to=self._wallet2.get_address())
         self.assertEqual(transfer_tx["status"], 0, msg=pp.pformat(transfer_tx))
-        self.assertEqual(transfer_tx["failure"]["message"], "LiquidICX: You don't have any transferable LICX yet.")
-        # self.replace_in_consts_py()
+        self.assertEqual(transfer_tx["failure"]["message"], "LiquidICX: Out of balance")
 
     def _join_owner(self, value: int = None):
         tx = self._build_transaction(method="join", value=10 * 10 ** 18)
         signed_transaction = SignedTransaction(tx, self._wallet)
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
         # LiquidICXTest.pp.pprint(tx_result)∂
+        self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
+
+    def _leave_owner(self):
+        tx = self._build_transaction(method="leave")
+        signed_transaction = SignedTransaction(tx, self._wallet)
+        tx_result = self.process_transaction(signed_transaction, self._icon_service)
         self.assertEqual(True, tx_result["status"], msg=LiquidICXTest.pp.pformat(tx_result))
 
     def _join_with_new_created_wallet(self):
