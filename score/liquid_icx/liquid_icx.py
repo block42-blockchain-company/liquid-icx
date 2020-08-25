@@ -53,6 +53,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distribute_it = VarDB("distribute_it", db, int)
         self._iteration_limit = VarDB("iteration_limit", db, int)
 
+        self._distributing = VarDB("distributing", db, bool)
+
         # System SCORE
         self._system_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
@@ -72,6 +74,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
+        self._distributing.set(False)
 
     def on_update(self) -> None:
         super().on_update()
@@ -197,10 +200,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         External entry point to leave the LICX pool
         """
         # if _value is None:
-        # Leave with all LICX
-        # unlocked = Holder(self.db, self.msg.sender).unlock()
-        # self._balances[self.msg.sender] = self._balances[self.msg.sender] + unlocked
-        # _value = self._balances[self.msg.sender]
+            # Leave with all LICX
+            # unlocked = Holder(self.db, self.msg.sender).unlock()
+            # self._balances[self.msg.sender] = self._balances[self.msg.sender] + unlocked
+            # value = self._balances[self.msg.sender]
 
         self._leave(self.msg.sender, _value)
 
@@ -254,7 +257,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     self._endDistribution()
                     return
                 cur_id = self._holders.next(cur_id)
-                # zbrisi iz holderjov, ce je transferable == 0
+                # delete from holders linked list
+                if not len(holder.join_values) and \
+                   self._balances[Address.from_string(cur_address)] < self._min_value_to_get_rewards.get():
+                    self._holders.remove(holder.node_id)
 
             self._distribute_it.set(cur_id)
         else:
@@ -287,7 +293,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         The function sets the following VarDB to the default state and updates the total supply of LICX.
         """
 
-        self._total_supply.set(self.totalSupply() + self._rewards.get() + self._new_unlocked_total.get())
+        self._total_supply.set(self.totalSupply() +
+                               self._rewards.get() +
+                               self._new_unlocked_total.get() -
+                               self._total_unstake_in_term.get())
         self._rewards.set(0)
         self._new_unlocked_total.set(0)
         self._distribute_it.set(0)
@@ -319,8 +328,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.Join(sender, value)
 
     def _leave(self, _account: Address, _value: int):
-        if _value <= 0:
-            revert("LiquidICX: Leaving value cannot be equal or less than zero.")
+        if _value <= self._min_value_to_get_rewards.get():
+            revert(f"LiquidICX: Leaving value cannot be less than {self._min_value_to_get_rewards.get()}.")
+        if self._balances[_account] < _value:
+            revert("LiquidICX: Out of balance.")
 
         Holder(self.db, _account).requestLeave(_value)
         self.Leave(_account, _value)
@@ -342,6 +353,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         receiver = Holder(self.db, _to)
 
         # Checks the sending value and balance.
+        if self._distributing.get():
+            revert("LiquidICX: Can not transfer while distribute cycle.")
         if _value < 0:
             revert("LiquidICX: Transferring value cannot be less than zero.")
         if self._balances[_from] - sender.unstaking < _value:
