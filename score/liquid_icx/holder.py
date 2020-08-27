@@ -40,14 +40,25 @@ class Holder:
 
         self.locked = self.locked + join_amount
 
-    def requestLeave(self, _leave_value):
+    def requestLeave(self, _leave_amount):
+        """
+        Adds a leave amount to the wallet's leave queue.
+        :param _leave_amount: Amount of LICX for a leave request
+        """
+
         if len(self._leave_values) >= 10:
             revert("LiquidICX: Wallet has already 10 leave requests. This is considered a spam")
 
-        self._leave_values.put(_leave_value)
-        self._unstaking = self.unstaking + _leave_value
+        self._leave_values.put(_leave_amount)
+        self._unstaking = self.unstaking + _leave_amount
 
     def leave(self) -> int:
+        """
+        Resolves a leave request.
+        It adds an unstaking period for all un-resolved leave requests.
+        :return: Sum of newly resolved leave requests
+        """
+
         leave_amount = 0
         if len(self._leave_values) != len(self._unstake_heights):
             block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]

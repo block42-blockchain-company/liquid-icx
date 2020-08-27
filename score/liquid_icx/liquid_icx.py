@@ -253,7 +253,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 cur_id = self._holders.next(cur_id)
                 # delete from holders linked list
                 if not len(holder.join_values) and \
-                   self._balances[Address.from_string(cur_address)] < self._min_value_to_get_rewards.get():
+                        self._balances[Address.from_string(cur_address)] < self._min_value_to_get_rewards.get():
                     self._holders.remove(holder.node_id)
 
             self._distribute_it.set(cur_id)
@@ -324,6 +324,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.Join(sender, value)
 
     def _leave(self, _account: Address, _value: int):
+        """
+        Internal method, which adds a leave request to a specific address.
+        Requests are then later resolved in distribute cycle, once per term.
+        :param _account: Address, which is requesting leave.
+        :param _value: Amount of LICX for a leave request
+        """
+
         if _value <= self._min_value_to_get_rewards.get():
             revert(f"LiquidICX: Leaving value cannot be less than {self._min_value_to_get_rewards.get()}.")
         if self._balances[_account] >= _value:
@@ -331,10 +338,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         Holder(self.db, _account).requestLeave(_value)
         self.LeaveRequest(_account, _value)
-
-        # Probably we can not do this, because this is considered rewards stealing IMO
-        # self._balances[_account] = self._balances[_account] - _value
-        # self._total_supply.set(self._total_supply.get() - _value)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
