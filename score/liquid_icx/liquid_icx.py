@@ -17,7 +17,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         pass
 
     @eventlog(indexed=2)
-    def Leave(self, _from: Address, _value: int):
+    def LeaveRequest(self, _from: Address, _value: int):
         pass
 
     @eventlog(indexed=3)
@@ -199,12 +199,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         External entry point to leave the LICX pool
         """
-        # if _value is None:
-            # Leave with all LICX
-            # unlocked = Holder(self.db, self.msg.sender).unlock()
-            # self._balances[self.msg.sender] = self._balances[self.msg.sender] + unlocked
-            # value = self._balances[self.msg.sender]
-
         self._leave(self.msg.sender, _value)
 
     @external
@@ -275,6 +269,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
         self._system_score.claimIScore()
+        self._distributing.set(True)
 
     def _redelegate(self):
         """
@@ -301,6 +296,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._new_unlocked_total.set(0)
         self._distribute_it.set(0)
         self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
+        self._distributing(False)
         self.Distribute(self.block_height)
 
     def _join(self, sender: Address, value: int) -> None:
@@ -330,11 +326,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def _leave(self, _account: Address, _value: int):
         if _value <= self._min_value_to_get_rewards.get():
             revert(f"LiquidICX: Leaving value cannot be less than {self._min_value_to_get_rewards.get()}.")
-        if self._balances[_account] < _value:
+        if self._balances[_account] >= _value:
             revert("LiquidICX: Out of balance.")
 
         Holder(self.db, _account).requestLeave(_value)
-        self.Leave(_account, _value)
+        self.LeaveRequest(_account, _value)
 
         # Probably we can not do this, because this is considered rewards stealing IMO
         # self._balances[_account] = self._balances[_account] - _value
@@ -357,7 +353,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Can not transfer while distribute cycle.")
         if _value < 0:
             revert("LiquidICX: Transferring value cannot be less than zero.")
-        if self._balances[_from] - sender.unstaking < _value:
+        if self._balances[_from] - sender.unstaking >= _value:
             revert("LiquidICX: Out of balance")
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")

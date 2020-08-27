@@ -48,15 +48,15 @@ class Holder:
         self._unstaking = self.unstaking + _leave_value
 
     def leave(self) -> int:
-        leave = 0
+        leave_amount = 0
         if len(self._leave_values) != len(self._unstake_heights):
             block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
             unstake_period = Utils.system_score_interface().estimateUnstakeLockPeriod()["unstakeLockPeriod"]
 
             for it in range(len(self._leave_values), len(self._unstake_heights)):
-                leave = leave + self._leave_values[it]
+                leave_amount = leave_amount + self._leave_values[it]
                 self._unstake_heights.put(block_height + unstake_period)
-        return leave
+        return leave_amount
 
     def unlock(self) -> int:
         """
