@@ -28,6 +28,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def Distribute(self, _block_height: int):
         pass
 
+    @eventlog(indexed=0)
+    def DebugInt(self, num_1: int, num_2: int):
+        pass
+
     # ================================================
     #  Initialization
     # ================================================
@@ -356,7 +360,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Can not transfer while distribute cycle.")
         if _value < 0:
             revert("LiquidICX: Transferring value cannot be less than zero.")
-        if self._balances[_from] - sender.unstaking >= _value:
+        if self._balances[_from] - sender.unstaking < _value:
             revert("LiquidICX: Out of balance")
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
