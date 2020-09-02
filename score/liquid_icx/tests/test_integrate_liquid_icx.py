@@ -34,7 +34,7 @@ class LiquidICXTest(LICXTestBase):
     def tearDownClass(cls) -> None:
         super().tearDownClass()
         if LiquidICXTest.TEST_WITH_FAKE_SYS_SCORE:
-            cls.replace_in_consts_py(LiquidICXTest.FAKE_SYS_SCORE_YEOUIDO, LiquidICXTest.SYS_SCORE_ADDRESS)
+            cls.replace_in_consts_py(LiquidICXTest.FAKE_SYS_SCORE_YEOUIDO, SCORE_INSTALL_ADDRESS)
 
     @classmethod
     def replace_in_consts_py(cls, pattern, sub):
@@ -48,35 +48,8 @@ class LiquidICXTest(LICXTestBase):
 
         if LiquidICXTest.FORCE_DEPLOY:
             self._score_address = self._deploy_score()["scoreAddress"]
+            print(f"New SCORE address: { self._score_address }")
 
-    def _deploy_score(self, to: str = SCORE_INSTALL_ADDRESS) -> dict:
-        score_content_bytes = gen_deploy_data_content(LiquidICXTest.SCORE_PROJECT)
-
-        # Generates an instance of transaction for deploying SCORE.
-        transaction = DeployTransactionBuilder() \
-            .from_(self._wallet.get_address()) \
-            .to(to) \
-            .nid(3) \
-            .step_limit(10000000000) \
-            .nonce(100) \
-            .content_type("application/zip") \
-            .content(score_content_bytes) \
-            .params({}) \
-            .build()
-
-        # Returns the signed transaction object having a signature
-        signed_transaction = SignedTransaction(transaction, self._wallet)
-
-        # process the transaction in local
-        tx_result = self.process_transaction(signed_transaction, self._icon_service)
-
-        self.assertEqual(True, tx_result['status'], msg=pp.pformat(tx_result))
-        self.assertTrue('scoreAddress' in tx_result, msg=pp.pformat(tx_result))
-
-        if LiquidICXTest.FORCE_DEPLOY:
-            print(f"New SCORE address: {tx_result['scoreAddress']}")
-
-        return tx_result
 
     def test_score_update(self):
         # update SCORE
@@ -88,7 +61,7 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(self._get_holders(), [])
         self._join()
         self.assertEqual(len(self._get_holders()), 1)
-        self._10_join()
+        self._n_join(10)
         self.assertEqual(len(self._get_holders()), 11)
         self._join()
         self.assertEqual(len(self._get_holders()), 11)
@@ -132,9 +105,9 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(True, tx_result["status"], msg=pp.pformat(tx_result))
         return tx_result
 
-    def _10_join(self):
+    def _n_join(self, n: int = 10, workers: int = 10):
         result = []
-        with ThreadPoolExecutor(max_workers=10) as pool:
-            for it in range(0, 10):
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for it in range(0, n):
                 tx_res = pool.submit(self._join_with_new_created_wallet)
                 result.append(tx_res)

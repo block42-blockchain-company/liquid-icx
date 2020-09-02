@@ -3,12 +3,13 @@ import os
 import pprint as pp
 
 from iconsdk.builder.call_builder import CallBuilder
-from iconsdk.builder.transaction_builder import CallTransactionBuilder, TransactionBuilder
+from iconsdk.builder.transaction_builder import CallTransactionBuilder, TransactionBuilder, DeployTransactionBuilder
 from iconsdk.icon_service import IconService
+from iconsdk.libs.in_memory_zip import gen_deploy_data_content
 from iconsdk.providers.http_provider import HTTPProvider
 from iconsdk.signed_transaction import SignedTransaction
 from iconsdk.wallet.wallet import KeyWallet
-from tbears.libs.icon_integrate_test import IconIntegrateTestBase
+from tbears.libs.icon_integrate_test import IconIntegrateTestBase, SCORE_INSTALL_ADDRESS
 from dotenv import load_dotenv
 
 
@@ -25,6 +26,7 @@ class LICXTestBase(IconIntegrateTestBase):
             cls._wallet2 = KeyWallet.load("../../keystore_test2", "test2_Account")
             cls._icon_service = IconService(HTTPProvider(os.getenv("YEUOIDO_NET_URL")))
             cls._score_address = os.getenv("YEUOIDO_SCORE_ADDRESS")
+            cls._fake_sys_score = os.getenv("YEUOIDO_FAKE_SYS_SCORE")
         else:
             cls._wallet = KeyWallet.load("../../keystore_test1", "test1_Account")
             cls._icon_service = IconService(HTTPProvider(os.getenv("LOCAL_NET_URL")))
@@ -33,6 +35,34 @@ class LICXTestBase(IconIntegrateTestBase):
     # -----------------------------------------------------------------------
     # ----------------------- testing helper methods ------------------------
     # -----------------------------------------------------------------------
+
+    def _deploy_score(self, to: str = SCORE_INSTALL_ADDRESS) -> dict:
+        dir_path = os.path.abspath(os.path.dirname(__file__))
+        score_project = os.path.abspath(os.path.join(dir_path, '..'))
+        score_content_bytes = gen_deploy_data_content(score_project)
+
+        # Generates an instance of transaction for deploying SCORE.
+        transaction = DeployTransactionBuilder() \
+            .from_(self._wallet.get_address()) \
+            .to(to) \
+            .nid(3) \
+            .step_limit(10000000000) \
+            .nonce(100) \
+            .content_type("application/zip") \
+            .content(score_content_bytes) \
+            .params({}) \
+            .build()
+
+        # Returns the signed transaction object having a signature
+        signed_transaction = SignedTransaction(transaction, self._wallet)
+
+        # process the transaction in local
+        tx_result = self.process_transaction(signed_transaction, self._icon_service)
+
+        self.assertEqual(True, tx_result['status'], msg=pp.pformat(tx_result))
+        self.assertTrue('scoreAddress' in tx_result, msg=pp.pformat(tx_result))
+
+        return tx_result
 
     def _build_transaction(self, type_="write", **kwargs):
         if type_ not in ("transfer", "write", "read"):
@@ -90,10 +120,8 @@ class LICXTestBase(IconIntegrateTestBase):
         wallet = from_ if from_ is not None else self._wallet
         value = value if value is not None else 10
         tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address())
-        signed_transaction = SignedTransaction(tx, self._wallet)
-        tx_result = self.process_transaction(signed_transaction, self._icon_service)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         return tx_result
-
 
     def _distribute(self):
         tx = self._build_transaction(method="distribute", margin=100000000000)
