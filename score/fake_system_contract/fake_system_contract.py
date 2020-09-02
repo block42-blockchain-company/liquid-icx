@@ -67,12 +67,13 @@ class FakeSystemContract(IconScoreBase):
 
     @external
     def claimIScore(self) -> None:
-        pass
+        i_score = self.queryIScore(self.msg.sender)["estimatedICX"]
+        self.IScoreClaimedV2(self.msg.sender, int(i_score), int(i_score/1000))
 
     @external(readonly=True)
     def queryIScore(self, address: Address) -> dict:
         return {
-            "estimatedICX": int(self._delegation.get() / 10)
+            "estimatedICX": 0
         }
 
     @external(readonly=True)
@@ -124,4 +125,3 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def getScoreDepositInfo(self, address: Address) -> dict:
         return {}
-
