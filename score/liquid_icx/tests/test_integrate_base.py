@@ -105,6 +105,7 @@ class LICXTestBase(IconIntegrateTestBase):
         signed_transaction = SignedTransaction(tx, self._wallet)
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
         self.assertEqual(True, tx_result["status"], msg=pp.pformat(tx_result))
+        return tx_result
 
     def _get_holders(self):
         tx = self._build_transaction(method="getHolders", type_="read")

@@ -155,6 +155,7 @@ class Holder:
             "locked": self.locked,
             "join_values": list(self.join_values),
             "unlock_heights": list(self.unlock_heights),
+            "unstaking": self.unstaking,
             "leave_values": list(self.leave_values),
-            "unstake_heights": list(self.unstake_heights)
+            "unstake_heights": list(self.unstake_heights),
         }

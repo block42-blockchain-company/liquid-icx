@@ -23,27 +23,12 @@ class LiquidICXTest(LICXTestBase):
     SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
 
     FORCE_DEPLOY = True
+
     # Change to True, if you want to deploy a new SCORE for testing
     LOCAL_NETWORK_TEST = False
     TEST_WITH_FAKE_SYS_SCORE = False
 
     FAKE_SYS_SCORE_YEOUIDO = "cx2b01010a92bf78ee464be0b5eff94676e95cd757"
-
-    # @classmethod
-    # def setUpClass(cls):
-    #     super().setUpClass()
-    #     if LiquidICXTest.TEST_WITH_FAKE_SYS_SCORE:
-    #         cls.replace_in_consts_py(LiquidICXTest.SYS_SCORE_ADDRESS, LiquidICXTest.FAKE_SYS_SCORE_YEOUIDO)
-    #
-    #     if LiquidICXTest.LOCAL_NETWORK_TEST:
-    #         cls._wallet = KeyWallet.load("../../keystore_test1", "test1_Account")
-    #         cls._icon_service = IconService(HTTPProvider(LiquidICXTest.LOCAL_TEST_HTTP_ENDPOINT_URI_V3))
-    #         cls._score_address = LiquidICXTest.LOCAL_SCORE_ADDRESS
-    #     else:
-    #         cls._wallet = KeyWallet.load("../../keystore_test3", "test3_Account")
-    #         cls._wallet2 = KeyWallet.load("../../keystore_test2", "test2_Account")
-    #         cls._icon_service = IconService(HTTPProvider(LiquidICXTest.YEUOIDO_TEST_HTTP_ENDPOINT_URI_V3))
-    #         cls._score_address = LiquidICXTest.YEUOIDO_SCORE_ADDRESS
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -125,6 +110,11 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(transfer_tx["status"], 0, msg=pp.pformat(transfer_tx))
         self.assertEqual(transfer_tx["failure"]["message"], "LiquidICX: Out of balance")
         self.assertEqual(self._balance_of(), hex(0), msg=self._balance_of())
+        leave_tx = self._leave()
+        self.assertEqual(leave_tx["status"], 0, msg=pp.pformat(transfer_tx))
+        owner = self._get_holder()
+        self.assertEqual(owner["locked"], 10, msg=pp.pformat(owner))
+        self.assertEqual(owner["unstaking"], 0, msg=pp.pformat(owner))
 
     def _join_with_new_created_wallet(self):
         # create a wallet and transfer 11 ICX to it
@@ -144,6 +134,3 @@ class LiquidICXTest(LICXTestBase):
             for it in range(0, 10):
                 tx_res = pool.submit(self._join_with_new_created_wallet)
                 result.append(tx_res)
-
-
-
