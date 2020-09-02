@@ -29,7 +29,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         pass
 
     @eventlog(indexed=0)
-    def DebugInt(self, num_1: int, num_2: int):
+    def DebugInt(self, string: str, num_1: int, num_2: int):
         pass
 
     # ================================================
@@ -234,9 +234,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 holder_rewards = 0
                 holder_balance = self._balances[Address.from_string(cur_address)]
                 if holder_balance >= self._min_value_to_get_rewards.get() and self._total_supply.get():
-                    # Reward formula:
                     holder_rewards = int(holder_balance / self._total_supply.get() * self._rewards.get())
-                    holder_balance += holder_rewards
 
                 # After distribution the address:
                 # - will try to unlock LICX
@@ -388,33 +386,4 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.Transfer(_from, _to, _value, _data)
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
 
-    def _burn(self, _account: Address, _amount: int) -> None:
-        """
-        Burn (destroy) a wallet's LICX
-        :param _account: Wallet
-        :param _amount: to be burned LICX
-        """
 
-        if _account == ZERO_WALLET_ADDRESS:
-            revert("LiquidICX: burn from the zero address")
-        if self._balances[_account] - _amount < 0:
-            revert("LiquidICX: burn amount exceeds balance")
-
-        self._balances[_account] = self._balances[_account] - _amount
-        self._total_supply.set(self.totalSupply() - _amount)
-
-        self.Transfer(_account, ZERO_WALLET_ADDRESS, _amount, b'None')
-
-    def _mint(self, _account: Address, _amount: int, _internal: bool = False) -> None:
-        """
-        Issue new LICX to a wallet
-        :param _account: wallet
-        :param _amount: Amount of LICX
-        :param _internal: Whether the LICX come from rewards or not
-        """
-
-        self._balances[_account] = self._balances[_account] + _amount
-        self._total_supply.set(self.totalSupply() + _amount)
-
-        if _internal:
-            self.Transfer(ZERO_WALLET_ADDRESS, _account, _amount, b'None')
