@@ -102,19 +102,23 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
 
     def test_1_join_balance_transfer_leave(self):
-        self._join()
+        self._join(value=12)
         self.assertEqual(len(self._get_holders()), 1)
         self.assertEqual(self._balance_of(), hex(0), msg=self._balance_of())
         self.assertEqual(self._total_supply(), hex(0), msg=self._total_supply())
         transfer_tx = self._transfer_from_to(self._wallet, to=self._wallet2.get_address())
         self.assertEqual(transfer_tx["status"], 0, msg=pp.pformat(transfer_tx))
-        self.assertEqual(transfer_tx["failure"]["message"], "LiquidICX: Out of balance")
+        self.assertEqual(transfer_tx["failure"]["message"], "LiquidICX: Out of balance.")
         self.assertEqual(self._balance_of(), hex(0), msg=self._balance_of())
-        leave_tx = self._leave()
-        self.assertEqual(leave_tx["status"], 0, msg=pp.pformat(transfer_tx))
+        leave_tx = self._leave(5)
+        self.assertEqual(leave_tx["status"], 0, msg=pp.pformat(leave_tx))
+        self.assertIn("Leaving value cannot be less than", leave_tx["failure"]["message"], msg=pp.pformat(leave_tx))
+        leave_tx = self._leave(11)
+        self.assertEqual(leave_tx["status"], 0, msg=pp.pformat(leave_tx))
+        self.assertEqual(leave_tx["failure"]["message"], "LiquidICX: Out of balance.", msg=pp.pformat(leave_tx))
         owner = self._get_holder()
-        self.assertEqual(owner["locked"], 10, msg=pp.pformat(owner))
-        self.assertEqual(owner["unstaking"], 0, msg=pp.pformat(owner))
+        self.assertEqual(owner["locked"], hex(12 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(owner["unstaking"], hex(0), msg=pp.pformat(owner))
 
     def _join_with_new_created_wallet(self):
         # create a wallet and transfer 11 ICX to it

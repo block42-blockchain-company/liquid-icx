@@ -89,22 +89,25 @@ class LICXTestBase(IconIntegrateTestBase):
     def _join(self, from_: KeyWallet = None, value: int = None):
         wallet = from_ if from_ is not None else self._wallet
         value = value if value is not None else 10
-        tx = self._build_transaction(method="join", value=10 * 10 ** 18, from_=wallet.get_address())
+        tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address())
         signed_transaction = SignedTransaction(tx, self._wallet)
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
-        # pp.pprint(tx_result)
-        self.assertEqual(True, tx_result["status"], msg=pp.pformat(tx_result))
+        return tx_result
+
 
     def _distribute(self):
         tx = self._build_transaction(method="distribute", margin=100000000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         # LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
 
-    def _leave(self):
-        tx = self._build_transaction(method="leave")
+    def _leave(self, value: int = None):
+        paras = {
+            "_value": value * 10 ** 18
+        }
+        tx = self._build_transaction(method="leave", params=paras)
         signed_transaction = SignedTransaction(tx, self._wallet)
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
-        self.assertEqual(True, tx_result["status"], msg=pp.pformat(tx_result))
         return tx_result
 
     def _get_holders(self):

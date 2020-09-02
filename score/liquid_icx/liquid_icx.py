@@ -303,7 +303,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._new_unlocked_total.set(0)
         self._distribute_it.set(0)
         self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
-        self._distributing(False)
+        self._distributing.set(False)
         self.Distribute(self.block_height)
 
     def _join(self, sender: Address, value: int) -> None:
@@ -338,7 +338,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         :param _value: Amount of LICX for a leave request
         """
 
-        if _value <= self._min_value_to_get_rewards.get():
+        if _value < self._min_value_to_get_rewards.get():
             revert(f"LiquidICX: Leaving value cannot be less than {self._min_value_to_get_rewards.get()}.")
         if self._balances[_account] <= _value:
             revert("LiquidICX: Out of balance.")
@@ -364,7 +364,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if _value < 0:
             revert("LiquidICX: Transferring value cannot be less than zero.")
         if self._balances[_from] - sender.unstaking < _value:
-            revert("LiquidICX: Out of balance")
+            revert("LiquidICX: Out of balance.")
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
