@@ -131,7 +131,7 @@ class LICXTestBase(IconIntegrateTestBase):
 
     def _leave(self, value: int = None):
         paras = {
-            "_value": value * 10 ** 18
+            "_value": value * 10 ** 18 if value is not None else value
         }
         tx = self._build_transaction(method="leave", params=paras)
         signed_transaction = SignedTransaction(tx, self._wallet)

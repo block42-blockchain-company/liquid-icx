@@ -33,7 +33,11 @@ class FakeSystemContract(IconScoreBase):
 
     def __init__(self, db: 'IconScoreDatabase') -> None:
         super().__init__(db)
+
         self._termStartHeight = VarDB('term_start_height', db, value_type=int)
+        self._blockHeight = VarDB('blockHeight', db, value_type=int)
+        self._unstakeLockPeriod = VarDB("unstakeLockPeriod", db, value_type=int)
+
         self._stake = VarDB('stake', db, value_type=int)
         self._delegation = VarDB('delegation', db, value_type=int)
 
@@ -78,7 +82,9 @@ class FakeSystemContract(IconScoreBase):
 
     @external(readonly=True)
     def estimateUnstakeLockPeriod(self) -> dict:
-        return {}
+        return {
+            "unstakeLockPeriod" : self._unstakeLockPeriod.get()
+        }
 
     @external(readonly=True)
     def getTermStartHeight(self) -> int:
@@ -93,6 +99,7 @@ class FakeSystemContract(IconScoreBase):
     def getIISSInfo(self) -> dict:
         return {
             "nextPRepTerm": self._termStartHeight.get() + TERM_LENGTH,
+            "blockHeight": self._blockHeight.get()
         }
 
     @external(readonly=True)
