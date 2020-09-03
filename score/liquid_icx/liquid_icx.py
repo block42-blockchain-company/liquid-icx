@@ -338,7 +338,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         if _value < self._min_value_to_get_rewards.get():
             revert(f"LiquidICX: Leaving value cannot be less than {self._min_value_to_get_rewards.get()}.")
-        if self._balances[_account] <= _value:
+        if self._balances[_account] < _value:
             revert("LiquidICX: Out of balance.")
 
         Holder(self.db, _account).requestLeave(_value)
