@@ -44,6 +44,8 @@ class FakeSystemContract(IconScoreBase):
     def on_install(self) -> None:
         super().on_install()
         self._termStartHeight.set(FIRST_TERM)
+        self._blockHeight.set(FIRST_TERM)
+        self._unstakeLockPeriod.set(FIRST_TERM * 8)
 
     def on_update(self) -> None:
         super().on_update()
@@ -83,7 +85,7 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def estimateUnstakeLockPeriod(self) -> dict:
         return {
-            "unstakeLockPeriod" : self._unstakeLockPeriod.get()
+            "unstakeLockPeriod": self._unstakeLockPeriod.get()
         }
 
     @external(readonly=True)
@@ -94,6 +96,10 @@ class FakeSystemContract(IconScoreBase):
     def incrementTerm(self) -> None:
         current_start_height = self._termStartHeight.get()
         self._termStartHeight.set(current_start_height + TERM_LENGTH)
+
+    @external
+    def setBlockHeight(self, _new_height: int) -> None:
+        self._blockHeight.set(_new_height)
 
     @external(readonly=True)
     def getIISSInfo(self) -> dict:

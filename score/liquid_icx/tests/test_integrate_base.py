@@ -138,6 +138,12 @@ class LICXTestBase(IconIntegrateTestBase):
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
         return tx_result
 
+    def _claim(self):
+        tx = self._build_transaction(method="claim")
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        # LiquidICXTest.pp.pprint(tx_result)
+        return tx_result
+
     def _get_holders(self):
         tx = self._build_transaction(method="getHolders", type_="read")
         tx_result = self.process_call(tx, self._icon_service)

@@ -37,7 +37,6 @@ class Holder:
 
         self._join_values.put(join_amount)
         self._unlock_heights.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
-
         self.locked = self.locked + join_amount
 
     def requestLeave(self, _leave_amount):
@@ -90,17 +89,21 @@ class Holder:
                     break
         return unlocked
 
-    # def claim(self):
-    #     if len(self._unlock_heights):
-    #         block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
-    #         while self._unstake_heights:
-    #             if block_height > self._unstake_heights[0]:
-    #                 self.claimableICX = self.claimableICX + self._leave_values[0]
-    #
-    #                 Utils.remove_from_array(self._leave_values, self._leave_values[0])
-    #                 Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
-    #             else:
-    #                 break
+    def claim(self) -> int:
+        """
+        Function checks, if the user's unstaking period is over and his is ICX is ready to be claimed.
+        """
+
+        if len(self._unstake_heights):
+            block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+            while len(self._unstake_heights):
+                if block_height >= self._unstake_heights[0]:
+                    self.claimableICX = self.claimableICX + self._leave_values[0]
+
+                    Utils.remove_from_array(self._leave_values, self._leave_values[0])
+                    Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
+                else:
+                    break
 
     @property
     def locked(self) -> int:

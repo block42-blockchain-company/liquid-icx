@@ -209,6 +209,19 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._leave(self.msg.sender, _value)
 
     @external
+    def claim(self) -> None:
+        """
+        External entry point to claim ICX
+        """
+        holder = Holder(self.db, self.msg.sender)
+        holder.claim()
+
+        if holder.claimableICX:
+            self.icx.send(self.msg.sender, holder.claimableICX)
+            holder.claimableICX = 0
+
+
+    @external
     def distribute(self) -> None:
         """
         Distribute I-Score rewards once per term.
@@ -343,6 +356,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         Holder(self.db, _account).requestLeave(_value)
         self.LeaveRequest(_account, _value)
+
+    # def _claim(self, _account: Address, _value: int):
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
