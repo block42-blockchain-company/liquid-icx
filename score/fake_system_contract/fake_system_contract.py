@@ -41,6 +41,8 @@ class FakeSystemContract(IconScoreBase):
         self._stake = VarDB('stake', db, value_type=int)
         self._delegation = VarDB('delegation', db, value_type=int)
 
+        self._i_score = VarDB('i_score', db, value_type=int)
+
     def on_install(self) -> None:
         super().on_install()
         self._termStartHeight.set(FIRST_TERM)
@@ -79,7 +81,7 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def queryIScore(self, address: Address) -> dict:
         return {
-            "estimatedICX": 0
+            "estimatedICX": self._i_score.get()
         }
 
     @external(readonly=True)
@@ -100,6 +102,10 @@ class FakeSystemContract(IconScoreBase):
     @external
     def setBlockHeight(self, _new_height: int) -> None:
         self._blockHeight.set(_new_height)
+
+    @external
+    def setIScore(self, _i_score: int) -> None:
+        self._i_score.set(_i_score)
 
     @external(readonly=True)
     def getIISSInfo(self) -> dict:
