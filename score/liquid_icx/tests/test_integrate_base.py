@@ -1,6 +1,7 @@
 import unittest
 import os
 import pprint as pp
+from concurrent.futures.thread import ThreadPoolExecutor
 
 from iconsdk.builder.call_builder import CallBuilder
 from iconsdk.builder.transaction_builder import CallTransactionBuilder, TransactionBuilder, DeployTransactionBuilder
@@ -113,6 +114,26 @@ class LICXTestBase(IconIntegrateTestBase):
         result = self._icon_service.call(tx)
         return int(result["contractCall"], 16) + margin
 
+    def _join_with_new_created_wallet(self) -> KeyWallet:
+        # create a wallet and transfer 11 ICX to it
+        wallet = KeyWallet.create()
+        tx = self._build_transaction(type_="transfer", to=wallet.get_address(), value=11 * 10 ** 18)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertEqual(True, tx_result["status"], msg=pp.pformat(tx_result))
+        # make a join request
+        tx = self._build_transaction(method="join", from_=wallet.get_address(), params={}, value=10 * 10 ** 18)
+        tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
+        self.assertEqual(True, tx_result["status"], msg=pp.pformat(tx_result))
+        return wallet
+
+    def _n_join(self, n: int = 10, workers: int = 10) -> list:
+        result = []
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for it in range(0, n):
+                tx_res = pool.submit(self._join_with_new_created_wallet)
+                result.append(tx_res)
+        return result
+
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
     # -----------------------------------------------------------------------
@@ -176,6 +197,7 @@ class LICXTestBase(IconIntegrateTestBase):
         tx = self._build_transaction(method="getIterationLimit", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         # pp.pprint(tx_result)
+        return tx_result
 
     def _get_rewards(self):
         tx = self._build_transaction(method="rewards", type_="read")
@@ -184,11 +206,12 @@ class LICXTestBase(IconIntegrateTestBase):
 
     def _set_iteration_limit(self, limit: int = 500):
         paras = {
-            "_value": limit
+            "_iteration_limit": limit
         }
         tx = self._build_transaction(method="setIterationLimit", params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         # pp.pprint(tx_result)
+        return tx_result
 
     # -----------------------------------------------------------------------
     # ---------------------------- IRC2 methods -----------------------------

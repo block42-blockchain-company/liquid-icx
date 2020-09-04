@@ -93,21 +93,5 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(owner["locked"], hex(12 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(owner["unstaking"], hex(0), msg=pp.pformat(owner))
 
-    def _join_with_new_created_wallet(self):
-        # create a wallet and transfer 11 ICX to it
-        wallet = KeyWallet.create()
-        tx = self._build_transaction(type_="transfer", to=wallet.get_address(), value=11 * 10 ** 18)
-        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-        self.assertEqual(True, tx_result["status"], msg=pp.pformat(tx_result))
-        # make a join request
-        tx = self._build_transaction(method="join", from_=wallet.get_address(), params={}, value=10 * 10 ** 18)
-        tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
-        self.assertEqual(True, tx_result["status"], msg=pp.pformat(tx_result))
-        return tx_result
 
-    def _n_join(self, n: int = 10, workers: int = 10):
-        result = []
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            for it in range(0, n):
-                tx_res = pool.submit(self._join_with_new_created_wallet)
-                result.append(tx_res)
+

@@ -235,8 +235,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
             if not self._rewards.get():
                 self._claimRewards()
-                # get head id for start iteration
-                self._distribute_it.set(self._holders.get_head_node().id)
+                self._distribute_it.set(self._holders.get_head_node().id) # get head id for start iteration
 
             cur_id = self._distribute_it.get()
             for it in range(self._iteration_limit.get()):
@@ -357,7 +356,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Holder(self.db, _account).requestLeave(_value)
         self.LeaveRequest(_account, _value)
 
-    # def _claim(self, _account: Address, _value: int):
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
