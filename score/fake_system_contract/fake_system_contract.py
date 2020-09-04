@@ -76,6 +76,7 @@ class FakeSystemContract(IconScoreBase):
     @external
     def claimIScore(self) -> None:
         i_score = self.queryIScore(self.msg.sender)["estimatedICX"]
+        self._i_score.set(0)
         self.IScoreClaimedV2(self.msg.sender, int(i_score), int(i_score/1000))
 
     @external(readonly=True)
