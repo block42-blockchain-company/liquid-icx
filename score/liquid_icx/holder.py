@@ -99,6 +99,7 @@ class Holder:
             while len(self._unstake_heights):
                 if block_height >= self._unstake_heights[0]:
                     claim_amount = claim_amount + self._leave_values[0]
+                    self.unstaking = self.unstaking - self._leave_values[0]
 
                     Utils.remove_from_array(self._leave_values, self._leave_values[0])
                     Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])

@@ -41,8 +41,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
     # -----------------------------------------------------------------------
     def _deployFakeSystemSCORE(self):
         dir_path = os.path.abspath(os.path.dirname(__file__))
-        score_project = os.path.abspath(
-            os.path.join(dir_path, "/Users/tomaz/Dev/Icon/LICX/liquid-icx/score/fake_system_contract"))
+        score_project = os.path.abspath(os.path.join(dir_path, "../../fake_system_contract"))
         score_content_bytes = gen_deploy_data_content(score_project)
 
         transaction = DeployTransactionBuilder() \
