@@ -7,7 +7,6 @@ class Holder:
     def __init__(self, db: IconScoreDatabase, _address: Address):
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
         self._unstaking = VarDB("unstaking_" + _address.__str__(), db, value_type=int)
-        self._claimableICX = VarDB("claimableICX_" + _address.__str__(), db, value_type=int)
 
         # Presents how much user deposited to SCORE in chronological order
         self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
@@ -94,16 +93,18 @@ class Holder:
         Function checks, if the user's unstaking period is over and his is ICX is ready to be claimed.
         """
 
+        claim_amount = 0
         if len(self._unstake_heights):
             block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
             while len(self._unstake_heights):
                 if block_height >= self._unstake_heights[0]:
-                    self.claimableICX = self.claimableICX + self._leave_values[0]
+                    claim_amount = claim_amount + self._leave_values[0]
 
                     Utils.remove_from_array(self._leave_values, self._leave_values[0])
                     Utils.remove_from_array(self._unstake_heights, self._unstake_heights[0])
                 else:
                     break
+        return claim_amount
 
     @property
     def locked(self) -> int:
@@ -120,14 +121,6 @@ class Holder:
     @unstaking.setter
     def unstaking(self, value):
         self._unstaking.set(value)
-
-    @property
-    def claimableICX(self) -> int:
-        return self._claimableICX.get()
-
-    @claimableICX.setter
-    def claimableICX(self, value):
-        self._claimableICX.set(value)
 
     @property
     def join_values(self) -> ArrayDB:

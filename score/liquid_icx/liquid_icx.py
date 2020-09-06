@@ -214,11 +214,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         External entry point to claim ICX
         """
         holder = Holder(self.db, self.msg.sender)
-        holder.claim()
+        claim_amount = holder.claim()
 
-        if holder.claimableICX:
-            self.icx.send(self.msg.sender, holder.claimableICX)
-            holder.claimableICX = 0
+        if not claim_amount:
+            self.icx.send(self.msg.sender, claim_amount)
 
 
     @external
