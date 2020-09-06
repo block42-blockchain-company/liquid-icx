@@ -76,6 +76,7 @@ class LICXTestBase(IconIntegrateTestBase):
         method_ = None if "method" not in kwargs else kwargs["method"]
         params_ = {} if "params" not in kwargs else kwargs["params"]
 
+        tx = None
         if type_ == "write":
             steps_ = self._estimate_steps(margin_)
             tx = CallTransactionBuilder() \
@@ -130,9 +131,18 @@ class LICXTestBase(IconIntegrateTestBase):
         result = []
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for it in range(0, n):
-                tx_res = pool.submit(self._join_with_new_created_wallet)
-                result.append(tx_res)
+                future = pool.submit(self._join_with_new_created_wallet)
+                result.append(future)
         return result
+
+    def _n_leave(self, wallet_list: list, condition: bool, workers: int = 10):
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for wallet in wallet_list:
+                future = pool.submit(self._leave, int(self._balance_of(wallet.result().get_address()), 16))
+                self.assertEqual(condition, future.result()["status"])
+
+    def _n_claim(self, wallet_list: list, condition: bool, workers: int = 10):
+        pass
 
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
@@ -210,7 +220,7 @@ class LICXTestBase(IconIntegrateTestBase):
         }
         tx = self._build_transaction(method="setIterationLimit", params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-        # pp.pprint(tx_result)
+        self.assertTrue(tx_result["status"], msg=tx_result)
         return tx_result
 
     # -----------------------------------------------------------------------

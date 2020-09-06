@@ -4,6 +4,7 @@ import time
 import unittest
 
 import pprint as pp
+from asyncio import Future
 
 from iconsdk.builder.transaction_builder import DeployTransactionBuilder
 from iconsdk.exception import JSONRPCException
@@ -16,8 +17,15 @@ from tbears.libs.icon_integrate_test import SCORE_INSTALL_ADDRESS
 from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 
+def _is_distributed(event_logs: list) -> bool:
+    for log in event_logs:
+        if log["indexed"][0] == 'Distribute(int)':
+            return True
+    return False
+
+
 class LiquidICXWithFakeSysSCORETest(LICXTestBase):
-    LICX_FORCE_DEPLOY = True  # set to true, if you want to deploy new SCORES for each test#
+    LICX_FORCE_DEPLOY = True  # set to true, if you want to deploy new SCORES for each test
     FAKE_SYS_SCORE_FORCE_DEPLOY = False  # set to true, if you want to deploy new SCORES for each test
     TERM_LENGTH = 43120
 
@@ -111,6 +119,23 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
                              current_start_block_height + self.TERM_LENGTH * (i + 1),
                              msg="startBlockHeight returns wrong value!")
 
+    def _set_i_score(self, i_score):
+        paras = {
+            "_i_score": i_score
+        }
+        tx = self._build_transaction(to=self._fake_sys_score, method="setIScore", params=paras)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertTrue(tx_result["status"], msg=tx_result)
+        return tx_result
+
+    def _query_i_score(self):
+        paras = {"address": self._score_address}
+        tx = self._build_transaction(to=self._fake_sys_score,
+                                     type_="read",
+                                     method="queryIScore",
+                                     params=paras)
+        return self.process_call(tx, self._icon_service)
+
     # -----------------------------------------------------------------------
     # ------------------------------- tests ---------------------------------
     # -----------------------------------------------------------------------
@@ -191,7 +216,8 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self.assertEqual(len(owner["leave_values"]), len(owner["unstake_heights"]), msg=pp.pformat(owner))
         self.assertEqual(len(owner["unstake_heights"]), 1, msg=pp.pformat(owner))
         self.assertEqual(owner["unstake_heights"][0], hex(int(self._getIISSInfo()["blockHeight"], 16) +
-                                                          int(self._estimateUnstakeLockPeriod()["unstakeLockPeriod"], 16)))
+                                                          int(self._estimateUnstakeLockPeriod()["unstakeLockPeriod"],
+                                                              16)))
         self.assertEqual(owner["unstaking"], hex(20 * 10 ** 18), msg=pp.pformat(owner))
         # 6
         self._set_block_height(int(owner["unstake_heights"][0], 16))
@@ -199,6 +225,46 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         tx_claim = self._claim()
         self.assertTrue(tx_claim["status"], msg=pp.pformat(tx_claim))
 
+    def test_2_join_with_100_wallets_distribute_transfer_leave_claim(self):
+        """
+        1. Set iteration limit to 10 and set rewards to 100
+        2. Transfer 11 ICX to newly created wallets and make a join tx with them.
+        3. Increment term on fake sys SCORE and distribute
+        4. Tries to transfer between distribute calls, should fail
+        5. Set i_score, leave requests for all wallets and distribute again
+        """
+        # 1
+        self._set_iteration_limit(10)
+        self.assertEqual(hex(10), self._get_iteration_limit(), msg=pp.pformat(self._get_iteration_limit()))
+        self._set_i_score(100 * 10 ** 21)
+        self.assertEqual(self._query_i_score()["estimatedICX"], hex(100 * 10 ** 21))
+        # 2
+        wallets = self._n_join(100, workers=100)
+        self.assertEqual(100, len(self._get_holders()))
+        # 3
+        self._increment_term_for_n(n=2)
+        while True:
+            tx_distribute = self._distribute()
+            self.assertTrue(tx_distribute["status"], msg=pp.pformat(tx_distribute))
+            if not _is_distributed(tx_distribute["eventLogs"]):
+                # 4
+                _from: Future = wallets[0]
+                _to: Future = wallets[1]
+                tx_transfer = self._transfer_from_to(from_=_from.result(), to=_to.result().get_address())
+                self.assertFalse(tx_transfer["status"])
+            else:
+                break
+        # 5
+        self._set_i_score(100 * 10 ** 21)
+        self.assertEqual(self._query_i_score()["estimatedICX"], hex(100 * 10 ** 21))
+        self._n_leave(wallets, condition=True, workers=100)
+        self._increment_term_for_n(n=1)
+
+        tx_distribute = self._distribute()
+        self.assertTrue(tx_distribute["status"], msg=pp.pformat(tx_distribute))
+        while not _is_distributed(tx_distribute["eventLogs"]):
+            tx_distribute = self._distribute()
+            self.assertTrue(tx_distribute["status"], msg=pp.pformat(tx_distribute))
 
 
 if __name__ == '__main__':
