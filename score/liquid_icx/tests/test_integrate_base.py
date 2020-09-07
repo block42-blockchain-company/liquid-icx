@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 
 
 class LICXTestBase(IconIntegrateTestBase):
+    _wallet: KeyWallet
     LOCAL_NETWORK_TEST = False
 
     @classmethod
@@ -115,6 +116,15 @@ class LICXTestBase(IconIntegrateTestBase):
         result = self._icon_service.call(tx)
         return int(result["contractCall"], 16) + margin
 
+    def _transfer_icx_from_to(self, from_: KeyWallet, to: KeyWallet, value: int, condition: bool = True):
+        tx = self._build_transaction(type_="transfer",
+                                     from_=from_.get_address(),
+                                     to=to.get_address(),
+                                     value=value * 10 ** 18)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertEqual(tx_result["status"], condition, msg=pp.pformat(tx_result))
+        return tx_result
+
     def _join_with_new_created_wallet(self) -> KeyWallet:
         # create a wallet and transfer 11 ICX to it
         wallet = KeyWallet.create()
@@ -135,14 +145,23 @@ class LICXTestBase(IconIntegrateTestBase):
                 result.append(future)
         return result
 
-    def _n_leave(self, wallet_list: list, condition: bool, workers: int = 10):
+    def _n_leave(self, wallet_list: list, workers: int = 10):
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for wallet in wallet_list:
-                future = pool.submit(self._leave, int(self._balance_of(wallet.result().get_address()), 16))
-                self.assertEqual(condition, future.result()["status"])
+                _balance = int(self._balance_of(wallet.result().get_address()), 16)
+                pool.submit(self._leave,
+                            wallet.result(),
+                            int(_balance * 10 ** -18))
 
-    def _n_claim(self, wallet_list: list, condition: bool, workers: int = 10):
-        pass
+    def _n_claim(self, wallet_list: list, workers: int = 10):
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for wallet in wallet_list:
+                pool.submit(self._claim, wallet.result())
+
+    def _n_transfer_icx(self, wallet_list: list, to: KeyWallet = None, condition: bool = True, workers:int = 10):
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for wallet in wallet_list:
+                pool.submit(self._n_transfer_icx, wallet, to, 9)
 
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
@@ -160,18 +179,26 @@ class LICXTestBase(IconIntegrateTestBase):
         # LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
-    def _leave(self, value: int = None):
+    def _leave(self, from_: KeyWallet = None, value: int = None, condition: bool = True):
+        if from_ is None:
+            from_ = self._wallet
         paras = {
             "_value": value * 10 ** 18 if value is not None else value
         }
-        tx = self._build_transaction(method="leave", params=paras)
-        signed_transaction = SignedTransaction(tx, self._wallet)
+        tx = self._build_transaction(method="leave",
+                                     from_=from_.get_address(),
+                                     params=paras)
+        signed_transaction = SignedTransaction(tx, from_)
         tx_result = self.process_transaction(signed_transaction, self._icon_service)
+        self.assertEqual(tx_result["status"], condition)
         return tx_result
 
-    def _claim(self):
-        tx = self._build_transaction(method="claim")
+    def _claim(self,  from_: KeyWallet = None, condition: bool = True):
+        if from_ is None:
+            from_ = self._wallet
+        tx = self._build_transaction(method="claim", from_=from_.get_address())
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertEqual(tx_result["status"], condition, msg=pp.pformat(tx_result))
         # LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
@@ -241,7 +268,7 @@ class LICXTestBase(IconIntegrateTestBase):
         # pp.pprint(tx_result)
         return tx_result
 
-    def _transfer_from_to(self, from_: KeyWallet = None, to: str = None, value: int = None):
+    def _transfer_licx_from_to(self, from_: KeyWallet = None, to: str = None, value: int = None):
         from_ = self._wallet if from_ is None else from_
         to = self._wallet2.get_address() if to is None else to
         value = value if value is not None else 1

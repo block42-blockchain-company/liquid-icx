@@ -139,7 +139,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
     # -----------------------------------------------------------------------
     # ------------------------------- tests ---------------------------------
     # -----------------------------------------------------------------------
-    def test_0_single_wallet_join_distribute_transfer(self):
+    def _0_single_wallet_join_distribute_transfer(self):
         """
         1. User joins with 12 ICX
         2. Tries to transfer, but should fail since LICX is unlocked after 2 terms
@@ -155,7 +155,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self.assertTrue(tx_join["status"])
         self.assertEqual(len(self._get_holders()), 1)
         # 2,3
-        tx_transfer = self._transfer_from_to(self._wallet, self._wallet2.get_address())
+        tx_transfer = self._transfer_licx_from_to(self._wallet, self._wallet2.get_address())
         self.assertFalse(tx_transfer["status"], msg=pp.pformat(tx_transfer))
         self.assertEqual(tx_transfer["failure"]["message"], "LiquidICX: Out of balance.")
         owner = self._get_holder()
@@ -173,12 +173,12 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self.assertEqual(len(owner["join_values"]), 0)
         self.assertEqual(owner["locked"], hex(0))
         # 6
-        tx_transfer = self._transfer_from_to(self._wallet, self._wallet2.get_address(), value=2)
+        tx_transfer = self._transfer_licx_from_to(self._wallet, self._wallet2.get_address(), value=2)
         self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
         self.assertEqual(self._balance_of(self._wallet.get_address()), hex(10 * 10 ** 18))
         self.assertEqual(self._balance_of(self._wallet2.get_address()), hex(2 * 10 ** 18))
         # 7
-        tx_transfer = self._transfer_from_to(self._wallet2, self._wallet.get_address(), value=2)
+        tx_transfer = self._transfer_licx_from_to(self._wallet2, self._wallet.get_address(), value=2)
         self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
         self.assertEqual(self._balance_of(self._wallet.get_address()), hex(12 * 10 ** 18))
         self.assertEqual(self._balance_of(self._wallet2.get_address()), hex(0))
@@ -231,7 +231,8 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         2. Transfer 11 ICX to newly created wallets and make a join tx with them.
         3. Increment term on fake sys SCORE and distribute
         4. Tries to transfer between distribute calls, should fail
-        5. Set i_score, leave requests for all wallets and distribute again
+        5. Set i_score, create leave request for all wallets and distribute again to resolve leave them
+        6. Set new block height on fake System SCORE
         """
         # 1
         self._set_iteration_limit(10)
@@ -250,21 +251,27 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
                 # 4
                 _from: Future = wallets[0]
                 _to: Future = wallets[1]
-                tx_transfer = self._transfer_from_to(from_=_from.result(), to=_to.result().get_address())
+                tx_transfer = self._transfer_licx_from_to(from_=_from.result(), to=_to.result().get_address())
                 self.assertFalse(tx_transfer["status"])
             else:
                 break
         # 5
         self._set_i_score(100 * 10 ** 21)
         self.assertEqual(self._query_i_score()["estimatedICX"], hex(100 * 10 ** 21))
-        self._n_leave(wallets, condition=True, workers=100)
+        self._n_leave(wallets, workers=100)
         self._increment_term_for_n(n=1)
-
-        tx_distribute = self._distribute()
-        self.assertTrue(tx_distribute["status"], msg=pp.pformat(tx_distribute))
-        while not _is_distributed(tx_distribute["eventLogs"]):
+        while True:
             tx_distribute = self._distribute()
             self.assertTrue(tx_distribute["status"], msg=pp.pformat(tx_distribute))
+            if _is_distributed(tx_distribute["eventLogs"]):
+                break
+        holder = self._get_holder(wallets[0].result().get_address())
+        self.assertEqual(len(holder["leave_values"]), len(holder["unstake_heights"]), msg=pp.pformat(holder))
+        self.assertEqual(len(holder["unstake_heights"]), 1, msg=pp.pformat(holder))
+        # 6
+        self._set_block_height(int(holder["unstake_heights"][0], 16))
+        self._n_claim(wallet_list=wallets, workers=100)
+        # self._n_transfer_icx(wallets, to=self._wallet)
 
 
 if __name__ == '__main__':
