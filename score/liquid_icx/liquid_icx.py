@@ -229,7 +229,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         wallet = Wallet(self.db, self.msg.sender)
         claim_amount = wallet.claim()
 
-        if not claim_amount:
+        if claim_amount:
             self.icx.send(self.msg.sender, claim_amount)
             self.Claim()
 
@@ -238,6 +238,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         Distribute I-Score rewards once per term.
         Iterate over all wallets >= self._min_value_to_get_rewards and give them their reward share.
+        After the reward calculation is done, join/leave queues are being resolved. Reward, unlocked, leave values are
+        then being used to update wallet's balance and are added to: * new_unlocked_total
+                                                                     * total_unstake_in_term
+        When the last wallet in the linked list is being processed summed up values are being used to redelagate and to
+        update the total_supply of LICX. After that all the variables used are being reset (set to default state).
         This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
         """
 
@@ -249,43 +254,38 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 self._claimRewards()
                 self._distribute_it.set(self._wallets.get_head_node().id)  # get head id for start iteration
 
-            cur_id = self._distribute_it.get()
+            curr_id = self._distribute_it.get()
             for it in range(self._iteration_limit.get()):
-                cur_address = self._wallets.node_value(cur_id)
-                wallet = Wallet(self.db, cur_address)
-                # Distribute only to address which have already the LICX unlocked ( more than 2 terms )
-                # We decided to distribute only to wallets which have at least 10 LICX, to avoid spam/attacks.
+                curr_address: Address = Address.from_string(self._wallets.node_value(curr_id))
+                wallet = Wallet(self.db, curr_address)
+
                 wallet_rewards = 0
-                wallet_balance = self._balances[Address.from_string(cur_address)]
+                wallet_balance = self._balances[curr_address]
                 if wallet_balance >= self._min_value_to_get_rewards.get() and self._total_supply.get():
                     wallet_rewards = int(wallet_balance / self._total_supply.get() * self._rewards.get())
 
-                # After distribution the address:
-                # - will try to unlock LICX
-                # - will try to leave
                 wallet_unlocked = wallet.unlock()
                 wallet_leave = wallet.leave()
 
-                self._balances[Address.from_string(cur_address)] = \
-                    self._balances[Address.from_string(cur_address)] + \
-                    wallet_unlocked + \
-                    wallet_rewards - \
-                    wallet_leave
+                self._balances[curr_address] = self._balances[curr_address] + \
+                                               wallet_unlocked + \
+                                               wallet_rewards - \
+                                               wallet_leave
 
                 self._new_unlocked_total.set(self._new_unlocked_total.get() + wallet_unlocked)
                 self._total_unstake_in_term.set(self._total_unstake_in_term.get() + wallet_leave)
 
-                if cur_id == self._wallets.get_tail_node().id:
+                if curr_id == self._wallets.get_tail_node().id:
                     self._redelegate()
                     self._endDistribution()
                     return
-                cur_id = self._wallets.next(cur_id)
+
+                curr_id = self._wallets.next(curr_id)
                 # delete from wallets linked list
-                if not len(wallet.join_values) and \
-                        self._balances[Address.from_string(cur_address)] < self._min_value_to_get_rewards.get():
+                if not len(wallet.join_values) and self._balances[curr_address] < self._min_value_to_get_rewards.get():
                     self._wallets.remove(wallet.node_id)
 
-            self._distribute_it.set(cur_id)
+            self._distribute_it.set(curr_id)
         else:
             revert("LiquidICX: Distribute was already called this term.")
 
