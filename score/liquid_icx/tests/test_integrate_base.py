@@ -121,7 +121,7 @@ class LICXTestBase(IconIntegrateTestBase):
                                      from_=from_.get_address(),
                                      to=to.get_address(),
                                      value=value * 10 ** 18)
-        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
         self.assertEqual(tx_result["status"], condition, msg=pp.pformat(tx_result))
         return tx_result
 
@@ -158,10 +158,10 @@ class LICXTestBase(IconIntegrateTestBase):
             for wallet in wallet_list:
                 pool.submit(self._claim, wallet.result())
 
-    def _n_transfer_icx(self, wallet_list: list, to: KeyWallet = None, condition: bool = True, workers:int = 10):
+    def _n_transfer_icx(self, wallet_list: list, to: KeyWallet = None, workers: int = 10):
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for wallet in wallet_list:
-                pool.submit(self._n_transfer_icx, wallet, to, 9)
+                pool.submit(self._transfer_icx_from_to, wallet, to, 9)
 
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
@@ -197,23 +197,23 @@ class LICXTestBase(IconIntegrateTestBase):
         if from_ is None:
             from_ = self._wallet
         tx = self._build_transaction(method="claim", from_=from_.get_address())
-        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
         self.assertEqual(tx_result["status"], condition, msg=pp.pformat(tx_result))
         # LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
-    def _get_holders(self):
-        tx = self._build_transaction(method="getHolders", type_="read")
+    def _get_wallets(self):
+        tx = self._build_transaction(method="getWallets", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         # pp.pprint(tx_result)
         return tx_result
 
-    def _get_holder(self, address=None):
+    def _get_wallet(self, address=None):
         address = self._wallet.get_address() if address is None else address
         paras = {
             "_address": address
         }
-        tx = self._build_transaction(method="getHolder", type_="read", params=paras)
+        tx = self._build_transaction(method="getWallet", type_="read", params=paras)
         tx_result = self.process_call(tx, self._icon_service)
         # pp.pprint(tx_result)
         return tx_result

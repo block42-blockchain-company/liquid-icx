@@ -3,7 +3,7 @@ from .interfaces.system_score_interface import InterfaceSystemScore
 from .scorelib.utils import *
 
 
-class Holder:
+class Wallet:
     def __init__(self, db: IconScoreDatabase, _address: Address):
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
         self._unstaking = VarDB("unstaking_" + _address.__str__(), db, value_type=int)
@@ -16,13 +16,13 @@ class Holder:
         self._leave_values = ArrayDB("leave_values" + str(_address), db, value_type=int)
         self._unstake_heights = ArrayDB("unstake_heights" + str(_address), db, value_type=int)
 
-        # Holders ID
-        self._node_id = VarDB("holder_id_" + str(_address), db, value_type=int)
+        # Wallet ID in linked list
+        self._node_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
 
     def join(self, join_amount: int, node_id: int = None):
         """
         Adds new values to the wallet's join queues
-        :param node_id: Id in holder linked list
+        :param node_id: Id in wallet linked list
         :param join_amount: amount of ICX that a wallet sent
         """
 
@@ -59,12 +59,12 @@ class Holder:
 
         leave_amount = 0
         if len(self._leave_values) != len(self._unstake_heights):
-            block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+            current_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
             unstake_period = Utils.system_score_interface().estimateUnstakeLockPeriod()["unstakeLockPeriod"]
 
             for it in range(len(self._unstake_heights), len(self._leave_values)):
                 leave_amount = leave_amount + self._leave_values[it]
-                self._unstake_heights.put(block_height + unstake_period)
+                self._unstake_heights.put(current_height + unstake_period)
         return leave_amount
 
     def unlock(self) -> int:

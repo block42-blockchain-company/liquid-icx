@@ -82,7 +82,9 @@ class FakeSystemContract(IconScoreBase):
     @external(readonly=True)
     def queryIScore(self, address: Address) -> dict:
         return {
-            "estimatedICX": int(self._i_score.get() / 1000)
+            "iscore": self._i_score.get(),
+            "estimatedICX": int(self._i_score.get() / 1000),
+            "blockHeight": self._blockHeight.get()
         }
 
     @external(readonly=True)

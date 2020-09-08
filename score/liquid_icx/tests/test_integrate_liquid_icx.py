@@ -48,8 +48,7 @@ class LiquidICXTest(LICXTestBase):
 
         if LiquidICXTest.FORCE_DEPLOY:
             self._score_address = self._deploy_score()["scoreAddress"]
-            print(f"New SCORE address: { self._score_address }")
-
+            print(f"New SCORE address: {self._score_address}")
 
     def test_score_update(self):
         # update SCORE
@@ -58,25 +57,25 @@ class LiquidICXTest(LICXTestBase):
             self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=pp.pformat(tx_result))
 
     def test_0_join_delegate_stake(self):
-        self.assertEqual(self._get_holders(), [])
+        self.assertEqual(self._get_wallets(), [])
         self._join()
-        self.assertEqual(len(self._get_holders()), 1)
+        self.assertEqual(len(self._get_wallets()), 1)
         self._n_join(10)
-        self.assertEqual(len(self._get_holders()), 11)
+        self.assertEqual(len(self._get_wallets()), 11)
         self._join()
-        self.assertEqual(len(self._get_holders()), 11)
-        owner = self._get_holder()
+        self.assertEqual(len(self._get_wallets()), 11)
+        owner = self._get_wallet()
         self.assertEqual(owner["locked"], hex(2 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
         self.assertEqual(len(owner["unlock_heights"]), 2, msg=pp.pformat(owner))
         self.assertEqual(self._get_staked(), hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
-        owner = self._get_holder()
+        owner = self._get_wallet()
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
 
     def test_1_join_balance_transfer_leave(self):
         self._join(value=12)
-        self.assertEqual(len(self._get_holders()), 1)
+        self.assertEqual(len(self._get_wallets()), 1)
         self.assertEqual(self._balance_of(), hex(0), msg=self._balance_of())
         self.assertEqual(self._total_supply(), hex(0), msg=self._total_supply())
         transfer_tx = self._transfer_licx_from_to(self._wallet, to=self._wallet2.get_address())
@@ -89,9 +88,6 @@ class LiquidICXTest(LICXTestBase):
         leave_tx = self._leave(value=11)
         self.assertEqual(leave_tx["status"], 0, msg=pp.pformat(leave_tx))
         self.assertEqual(leave_tx["failure"]["message"], "LiquidICX: Out of balance.", msg=pp.pformat(leave_tx))
-        owner = self._get_holder()
+        owner = self._get_wallet()
         self.assertEqual(owner["locked"], hex(12 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(owner["unstaking"], hex(0), msg=pp.pformat(owner))
-
-
-
