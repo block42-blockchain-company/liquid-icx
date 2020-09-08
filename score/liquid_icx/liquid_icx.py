@@ -29,7 +29,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         pass
 
     @eventlog(indexed=0)
-    def DebugInt(self, string: str, num_1: int, num_2: int):
+    def Claim(self):
         pass
 
     # ================================================
@@ -231,6 +231,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         if not claim_amount:
             self.icx.send(self.msg.sender, claim_amount)
+            self.Claim()
 
     @external
     def distribute(self) -> None:
