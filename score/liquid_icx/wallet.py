@@ -64,7 +64,7 @@ class Wallet:
 
             for it in range(len(self._unstake_heights), len(self._leave_values)):
                 leave_amount = leave_amount + self._leave_values[it]
-                self._unstake_heights.put(current_height + unstake_period)
+                self._unstake_heights.put(current_height + unstake_period + UNSTAKING_MARGIN)
         return leave_amount
 
     def unlock(self) -> int:
