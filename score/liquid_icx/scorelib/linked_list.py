@@ -58,7 +58,7 @@ class _NodeDB:
     @property
     def id(self) -> int:
         # hardcoded string, will work only for LICX
-        return int(self._name.replace("holders_LINKED_LISTDB_NODEDB", ""))
+        return int(self._name.replace("wallets_LINKED_LISTDB_NODEDB", ""))
 
     def exists(self) -> bool:
         return self._init.get() == 1
