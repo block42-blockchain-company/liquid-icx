@@ -67,3 +67,30 @@ $ source bin/activate
 # Install the ICON SCORE dev tools
 (work) $ pip install tbears
 ```
+
+LICX is IRC-2 token standard implementation, where 1 LICX represents 1 ICX staked in pool.
+Main goal of LICX implementation is to be able to transfer assets, while still getting staking rewards.
+As stated above the ratio between LICX and ICX will always stay 1:1. LICX is achieving that by air-dropping rewards each prep-term.
+While air-dropping could have downsides,
+
+
+IRC-2 functions
+LICX implements all the standard IRC-2 methods.
+- name
+- symbol
+- decimals
+- totalSupply
+- balanceOf
+- transfer
+
+To participate at the pool/protokol, they also some other methods implemented.
+- Join
+Adds a join (mint) request to the wallet, which converts ICX to LICX. Joining requests are resolved once per term in distribute function,
+which is described bellow. Each wallet has maximal of 10 join requests per term. LICX tokens are locked for 2 terms, since they are not producing any rewards yet.
+
+- Leave
+Adds a leave (burn) request to the wallet, which converts LICX to ICX. Similar to the joining requests, also leave requests are resolved
+once per term only.
+
+- Distribute
+Does not only distribute rewards to the all the wallets involved in protocol, but also resolves each wallets join/leave requests.
