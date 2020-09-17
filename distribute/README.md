@@ -1,11 +1,11 @@
-#Liquid-ICX Telegram Bot
+# Liquid-ICX Telegram Bot
 
-###Development
+### Development
 The easiest way to start a bot is via:
  ```
 python3 licx_distribute_bot.py
 ```
-###Production
+### Production
 It is recommended to run a bot in a docker container.
 Execute to command bellow to build an image:
  ```
