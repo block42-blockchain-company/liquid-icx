@@ -36,10 +36,10 @@ def getTXResult(tx_hash) -> dict:
 
 def getLastDistributeEventHeight() -> int:
     params = {"page": 1, "count": 1000, "contractAddr": SCORE_ADDRESS}
-    contract_addr_response = requests.get(TRACKER_ENDPOINT, params=params)
+    contract_addr_response = requests.get(TRACKER_API + "/contract/eventLogList", params=params)
 
     if contract_addr_response.status_code != 200:
-        raise BadStatusException(contract_addr_response)
+        raise BadRequestStatusException(contract_addr_response)
 
     for log in contract_addr_response.json()["data"]:
         found = log["eventLog"].find("Distribute")
@@ -52,7 +52,7 @@ def getLastDistributeEventHeight() -> int:
 def getCreateTX() -> str:
     while True:
         params = {"addr": SCORE_ADDRESS}
-        addr_response = requests.get(TRACKER_ENDPOINT, params=params)
+        addr_response = requests.get(TRACKER_API + "/contract/info", params=params)
         if addr_response.status_code == 200:
             return addr_response.json()["data"]["createTx"]
 
@@ -60,12 +60,12 @@ def getCreateTX() -> str:
 def getCreatedSCOREHeight(create_tx) -> int:
     while True:
         params = {"txHash": create_tx}
-        tx_hash_response = requests.get(TRACKER_ENDPOINT, params=params)
+        tx_hash_response = requests.get(TRACKER_API + "/transaction/txDetail", params=params)
         if tx_hash_response.status_code == 200:
             return tx_hash_response.json()["data"]["height"]
 
 
-def distribute():
+def send_distribute_tx():
     tx = CallTransactionBuilder() \
         .from_(WALLET.get_address()) \
         .to(SCORE_ADDRESS) \
@@ -77,11 +77,21 @@ def distribute():
         .params({}) \
         .build()
     tx = SignedTransaction(tx, WALLET)
-    tx_res = getTXResult(ICX_SERVICE.send_transaction(tx))
-    logger.info(tx_res)
+    tx_result = getTXResult(ICX_SERVICE.send_transaction(tx))
+    if tx_result['status'] == 0:
+        raise BadTxStatusException(tx_result)
+    logger.info(tx_result)
 
 
-class BadStatusException(Exception):
+class BadRequestStatusException(Exception):
     def __init__(self, response: requests.Response):
         self.message = "Error while network request.\nReceived status code: " + \
                        str(response.status_code) + '\nReceived response: ' + response.text
+
+
+class BadTxStatusException(Exception):
+    def __init__(self, tx_result: dict):
+        self.message = f"Error while *sending TX*.\n" \
+                       f"Received status code: {tx_result['status']}\n" \
+                       f"Received failure code: {tx_result['failure']['code']}\n" \
+                       f"Received failure message: '{tx_result['failure']['message']}'"
