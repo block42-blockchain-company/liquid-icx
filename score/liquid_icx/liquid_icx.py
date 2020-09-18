@@ -308,12 +308,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Re-stake and re-delegate with the rewards claimed at the start of the cycle.
         """
         restake_value = self.getStaked() + self._rewards.get() - self._total_unstake_in_term.get()
-        self._system_score.setStake(restake_value)
         delegation: Delegation = {
             "address": PREP_ADDRESS,
             "value": restake_value
         }
-        self._system_score.setDelegation([delegation])
+        if restake_value >= self.getStaked():
+            self._system_score.setStake(restake_value)
+            self._system_score.setDelegation([delegation])
+        else:
+            self._system_score.setDelegation([delegation])
+            self._system_score.setStake(restake_value)
 
     def _endDistribution(self):
         """
