@@ -56,7 +56,7 @@ class LiquidICXTest(LICXTestBase):
             tx_result = self._deploy_score(self._score_address)
             self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=pp.pformat(tx_result))
 
-    def test_0_join_delegate_stake(self):
+    def test_0_join_delegate_stake_fallback(self):
         self.assertEqual(self._get_wallets(), [])
         self._join()
         self.assertEqual(len(self._get_wallets()), 1)
@@ -72,6 +72,8 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         owner = self._get_wallet()
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
+        fallback_tx = self._transfer_icx_from_to(self._wallet, self._score_address, value=5, condition=False)
+        self.assertIn("LICX does not accept ICX", fallback_tx["failure"]["message"])
 
     def test_1_join_balance_transfer_leave(self):
         self._join(value=12)
