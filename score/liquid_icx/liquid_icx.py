@@ -59,6 +59,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._distributing = VarDB("distributing", db, bool)
 
+        self._cap = VarDB("cap", db, int)
+
         # System SCORE
         self._system_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
@@ -79,6 +81,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
         self._distributing.set(False)
+
+        self._cap.set(1000 * 10 ** _decimals)
 
     def on_update(self) -> None:
         super().on_update()
@@ -151,6 +155,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def getWalletByNodeID(self, id: int) -> Address:
         return self._wallets.node_value(id)
 
+    @external(readonly=True)
+    def getCap(self) -> int:
+        return self._cap.get()
+
+
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:
         """
@@ -187,6 +196,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._min_value_to_get_rewards.set(_value)
 
+    @external
+    def setCap(self, _value: int):
+        if self.msg.sender != self.owner:
+            revert("LiquidICX: Only owner function at current state.")
+        self._cap.set(_value * 10 ** self._decimals.get())
+
+
     @staticmethod
     def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
         """
@@ -208,7 +224,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
 
         if self.msg.value < self._min_value_to_get_rewards.get():
-            revert("Joining value cannot be less than the minimum join value")
+            revert("LiquidICX: Joining value cannot be less than the minimum join value")
+
+        if self._cap.get() < self.getStaked():
+            revert("LiquidICX: Currently impossible to join the pool")
+
         self._join(self.msg.sender, self.msg.value)
 
     @external

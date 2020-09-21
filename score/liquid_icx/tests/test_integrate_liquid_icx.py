@@ -1,23 +1,12 @@
-import json
-import logging
-import os, sys
+import os
 import pprint as pp
 import fileinput
-from concurrent.futures.thread import ThreadPoolExecutor
 
-from iconsdk.builder.call_builder import CallBuilder
-from iconsdk.builder.transaction_builder import DeployTransactionBuilder, CallTransactionBuilder, TransactionBuilder
-from iconsdk.icon_service import IconService
-from iconsdk.libs.in_memory_zip import gen_deploy_data_content
-from iconsdk.providers.http_provider import HTTPProvider
-from iconsdk.signed_transaction import SignedTransaction
-from iconsdk.wallet.wallet import KeyWallet
-from tbears.libs.icon_integrate_test import IconIntegrateTestBase, SCORE_INSTALL_ADDRESS
+from tbears.libs.icon_integrate_test import  SCORE_INSTALL_ADDRESS
 
 from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 DIR_PATH = os.path.abspath(os.path.dirname(__file__))
-
 
 class LiquidICXTest(LICXTestBase):
     SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
@@ -93,3 +82,24 @@ class LiquidICXTest(LICXTestBase):
         owner = self._get_wallet()
         self.assertEqual(owner["locked"], hex(12 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(owner["unstaking"], hex(0), msg=pp.pformat(owner))
+
+    def test_2_join_cap(self):
+        self._set_cap(100)
+        self.assertEqual(self._get_cap(), hex(100 * 10 ** 18))
+        while True:
+            join_tx = self._join(value=30)
+            if not join_tx["status"]:
+                self.assertIn("Currently impossible to join the pool", join_tx["failure"]["message"], msg=pp.pformat(join_tx))
+                break
+        self._set_cap(200)
+        self.assertEqual(self._get_cap(), hex(200 * 10 ** 18))
+        while True:
+            join_tx = self._join(value=30)
+            if not join_tx["status"]:
+                self.assertIn("Currently impossible to join the pool", join_tx["failure"]["message"], msg=pp.pformat(join_tx))
+                break
+        self.assertEqual(1, len(self._get_wallets()))
+        owner = self._get_wallet(self._wallet.get_address())
+        self.assertEqual(7, len(owner["join_values"]))
+        self.assertEqual(hex(7 * 30 * 10 ** 18), owner["locked"])
+
