@@ -416,3 +416,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # Emits an event log `Transfer`
         self.Transfer(_from, _to, _value, _data)
         Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
+
+    @payable
+    def fallback(self):
+        """
+        Called when anyone sends ICX to the SCORE.
+        """
+        revert('LICX does not accept ICX. If you want to enter the pool, you need to call "join" method.')

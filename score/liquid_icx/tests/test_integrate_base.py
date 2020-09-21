@@ -116,10 +116,11 @@ class LICXTestBase(IconIntegrateTestBase):
         result = self._icon_service.call(tx)
         return int(result["contractCall"], 16) + margin
 
-    def _transfer_icx_from_to(self, from_: KeyWallet, to: KeyWallet, value: int, condition: bool = True):
+    def _transfer_icx_from_to(self, from_: KeyWallet, to: any, value: int, condition: bool = True):
+        to = to if isinstance(to, str) else to.get_address()
         tx = self._build_transaction(type_="transfer",
                                      from_=from_.get_address(),
-                                     to=to.get_address(),
+                                     to=to,
                                      value=value * 10 ** 18)
         tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
         self.assertEqual(tx_result["status"], condition, msg=pp.pformat(tx_result))
@@ -162,6 +163,7 @@ class LICXTestBase(IconIntegrateTestBase):
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for wallet in wallet_list:
                 pool.submit(self._transfer_icx_from_to, wallet, to, 9)
+
 
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
@@ -249,6 +251,8 @@ class LICXTestBase(IconIntegrateTestBase):
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertTrue(tx_result["status"], msg=tx_result)
         return tx_result
+
+
 
     # -----------------------------------------------------------------------
     # ---------------------------- IRC2 methods -----------------------------
