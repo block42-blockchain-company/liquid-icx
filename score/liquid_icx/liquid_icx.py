@@ -226,7 +226,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self.msg.value < self._min_value_to_get_rewards.get():
             revert("LiquidICX: Joining value cannot be less than the minimum join value")
 
-        if self._cap.get() < self.getStaked():
+        if self._cap.get() <= self.getStaked() + self.msg.value:
             revert("LiquidICX: Currently impossible to join the pool")
 
         self._join(self.msg.sender, self.msg.value)
