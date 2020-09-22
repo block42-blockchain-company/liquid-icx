@@ -4,7 +4,7 @@ Secure the ICON network, earn staking rewards while staying liquid. 🧽💧
 
 ## Installation
 
-To start local development you can choose between two options. 
+To start local development you can choose between two options. rtgreg
 
 1. Install and run tbears in docker container (quick and easy) or you can 
 2. Install tbears with PIP.
