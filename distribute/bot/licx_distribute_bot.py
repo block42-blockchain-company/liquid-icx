@@ -68,15 +68,6 @@ def start(update, context):
     if not is_admin(update):
         return
 
-    # Start job for user
-    if 'job_started' not in context.user_data:
-        context.job_queue.run_repeating(distribution_ready_check, interval=JOB_INTERVAL_IN_SECONDS, context={
-            'chat_id': update.message.chat.id,
-            'user_data': context.user_data
-        })
-        context.user_data['job_started'] = True
-        context.user_data['nodes'] = {}
-
     update.message.reply_text(f"여보세요!\n"
                               f"I'm *Harry*, your *Liquid ICX distribution officer*! 🤖\n\n"
                               f"Once per *ICON Term* I call the *distribute* function "
@@ -99,15 +90,14 @@ def distribute_handler(update, context):
     last_distribute_height = getLastDistributeEventHeight()
     chat_id = update.message.chat.id
     try:
-        distribute(context, chat_id, term_bounds, last_distribute_height)
+        distribute(context, term_bounds, last_distribute_height)
     except Exception as e:
         logger.error(f"Distribute call failed:\n{e}")
-        context.bot.send_message(chat_id,
-                                 f"‼️ *LICX* Distribute called *failed* "
-                                 f"for term {term_bounds['start']} - {term_bounds['end']} ‼\n\n"
-                                 f"Error message:\n"
-                                 f"{e.message}",
-                                 parse_mode='markdown')
+        text = f"‼️ *LICX* Distribute called *failed* " \
+               f"for term {term_bounds['start']} - {term_bounds['end']} ‼\n\n" \
+               f"Error message:\n" \
+               f"{e.message}"
+        try_message_to_all_users(context=context, text=text)
 
 
 def distribution_ready_check(context):
@@ -125,16 +115,15 @@ def distribution_ready_check(context):
         logger.error(e)
 
 
-def distribute(context, chat_id, term_bounds, initial_distribute_height):
+def distribute(context, term_bounds, initial_distribute_height):
     """
     Send distribute TX until new Distribute Event is emitted
     """
 
     logger.info("distribution starts")
-    context.bot.send_message(chat_id,
-                             f"*LICX* Joining, Reward Distribution, and Leaving is *starting* for "
-                             f"term {term_bounds['start']} - {term_bounds['end']}!",
-                             parse_mode='markdown')
+    text = f"*LICX* Joining, Reward Distribution, and Leaving is *starting* for " \
+           f"term {term_bounds['start']} - {term_bounds['end']}!"
+    try_message_to_all_users(context=context, text=text)
 
     while True:
         logger.info("distribution iteration")
@@ -142,11 +131,42 @@ def distribute(context, chat_id, term_bounds, initial_distribute_height):
         sleep(3)
         if initial_distribute_height != getLastDistributeEventHeight():
             logger.info("distribution ended")
-            context.bot.send_message(chat_id,
-                                    f"*LICX* Joining, Reward Distribution, and Leaving *successfully "
-                                    f"finished* for term {term_bounds['start']} - {term_bounds['end']}!",
-                                    parse_mode='markdown')
+            text = f"*LICX* Joining, Reward Distribution, and Leaving *successfully " \
+                   f"finished* for term {term_bounds['start']} - {term_bounds['end']}!"
+            try_message_to_all_users(context=context, text=text)
             break
+
+
+def try_message_to_all_users(context, text):
+    for chat_id in context.dispatcher.user_data.keys():
+        try_message(context, chat_id=chat_id, text=text)
+
+
+def try_message(context, chat_id, text, reply_markup=None):
+    """
+    Send a message to a user.
+    """
+
+
+    try:
+        context.bot.send_message(chat_id, text, parse_mode='markdown', reply_markup=reply_markup)
+    except TelegramError as e:
+        if 'bot was blocked by the user' in e.message:
+            print("Telegram user " + str(chat_id) + " blocked me; removing him from the user list")
+            del context.dispatcher.user_data[chat_id]
+            del context.dispatcher.chat_data[chat_id]
+            del context.dispatcher.persistence.user_data[chat_id]
+            del context.dispatcher.persistence.chat_data[chat_id]
+
+            # Somehow session.data does not get updated if all users block the bot.
+            # That makes problems on bot restart. That's why we delete the file ourselves.
+            if len(context.dispatcher.persistence.user_data) == 0:
+                if os.path.exists(session_data_path):
+                    os.remove(session_data_path)
+            context.job.enabled = False
+            context.job.schedule_removal()
+        else:
+            print("Got Error\n" + str(e) + "\nwith telegram user " + str(chat_id))
 
 
 def is_admin(update):
@@ -168,6 +188,7 @@ def main():
                   use_context=True)
     dispatcher = bot.dispatcher
 
+    dispatcher.job_queue.run_repeating(distribution_ready_check, interval=JOB_INTERVAL_IN_SECONDS)
     setup_existing_user(dispatcher)
 
     dispatcher.add_handler(CommandHandler('start', start))
