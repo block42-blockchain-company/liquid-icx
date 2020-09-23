@@ -164,7 +164,6 @@ class LICXTestBase(IconIntegrateTestBase):
             for wallet in wallet_list:
                 pool.submit(self._transfer_icx_from_to, wallet, to, 9)
 
-
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
     # -----------------------------------------------------------------------
@@ -195,7 +194,7 @@ class LICXTestBase(IconIntegrateTestBase):
         self.assertEqual(tx_result["status"], condition)
         return tx_result
 
-    def _claim(self,  from_: KeyWallet = None, condition: bool = True):
+    def _claim(self, from_: KeyWallet = None, condition: bool = True):
         if from_ is None:
             from_ = self._wallet
         tx = self._build_transaction(method="claim", from_=from_.get_address())
@@ -252,7 +251,19 @@ class LICXTestBase(IconIntegrateTestBase):
         self.assertTrue(tx_result["status"], msg=tx_result)
         return tx_result
 
+    def _set_cap(self, value, condition: bool = True):
+        paras = {
+            "_value": value
+        }
+        tx = self._build_transaction(method="setCap", params=paras)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertEqual(tx_result["status"], condition, msg=tx_result)
+        return tx_result
 
+    def _get_cap(self):
+        tx = self._build_transaction(method="getCap", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        return tx_result
 
     # -----------------------------------------------------------------------
     # ---------------------------- IRC2 methods -----------------------------
