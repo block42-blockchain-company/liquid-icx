@@ -2,9 +2,75 @@
 
 Secure the ICON network, earn staking rewards while staying liquid. 🧽💧
 
-## Installation
+### About LICX protocol
 
-To start local development you can choose between two options. 
+##### ICON network staking
+
+On ICON network the native token of ICX can be staked in the protocol which gives stakers a passive return in form of ICX tokens but the staked tokens are locked and can not be moved while the ICX is staked. 
+
+##### LICX
+
+LICX is IRC-2 token standard implementation, where 1 LICX represents 1 ICX staked in the LICX pool.
+The main goal of LICX implementation is for users to be able to transfer assets, while still getting staking rewards. 
+
+LICX can be used for personal use to stake ICX and still be able to transfer it from one wallet to another while the rewards earned are getting restaked and redelegated so the users can get compounding interest on their investment.
+
+Protocols that only use IRC-2 tokens can use LICX instead of ICX, similar to wrapped assets on other networks (for example wETH).
+Protocols that hold ICX can hold LICX instead and the users can also benefit from the network staking rewards.
+Protocols where users can spend their ICX can accept LICX instead and allow user to also receive the staking rewards.
+
+As stated above the ratio between LICX and ICX will always stay 1:1.
+LICX is achieving that by air-dropping rewards each prep-term. Air-drop does not happen through the transfer function but it just increases the amount of LICX in wallets based on the amount of LICX a specific wallet has at the time of the distribution.
+This allows ease of use for the users as they always know the amount of ICX they are dealing with when interacting with LICX.
+
+#### Depositing and withdrawal
+
+###### Deposit
+
+Depositing ICX into LICX protocol will put all the assets into the LICX pool. User will receive LICX (in ratio of 1:1) to their wallet as proof that they have deposited ICX into the LICX pool. When depositing ICX into LICX pool it will take 2 terms (2 days) before LICX becomes transferable and eligible for rewards. Because the ICON network staking rewards are first distributed after 2 terms this is a necessary step. After the two terms LICX will be unlocked and transferable.
+
+###### Withdrawal
+
+Depositing LICX into LICX protocol will withdraw ICX (in ratio of 1:1) from the LICX pool. When withdrawing LICX it will take between 5 to 20 terms (days) based on the unstaking period that the ICON network currently has. The number of days depends on the amount the ICX staked in the ICON network, the higher the % of ICON network is staked the fewer days you need to wait to unstake. User will have to manually claim their ICX once it has been unstaked (after the unstaking period).
+*If a user would stake on his own he would have to also wait the same amount of days to unstake.*
+
+###### Rewards
+
+Staking rewards distribution from the network has to be manually triggered. Anyone can trigger this function which will execute claiming new rewards, distribution of LICX to eligible users, restaking and redelegating ICX.
+Wallets that have less than 10 LICX in them are not eligible to prevent dust attacks (this number may be a subject to change).
+***
+### LICX functions
+LICX implements all the standard IRC-2 methods.
+
+- name
+- symbol
+- decimals
+- totalSupply
+- balanceOf
+- transfer
+
+To participate at the pool/protocol,they are also some other methods implemented.
+##### Join
+Adds a join (mint) request to the wallet, which converts ICX to LICX. Joining requests are resolved once per term in distribute function,
+which is described bellow. Each wallet has maximal of 10 join requests per term. LICX tokens are locked for 2 terms, since they are not producing any rewards yet, meaning you can not transfer them yet.
+ICX is then being staked and currently delegated to block42. ( TODO: next steps  ) 
+
+##### Leave
+Adds a leave (burn) request to the wallet, which converts LICX back to ICX. Similar to the joining requests, also leave requests are resolved
+once per term only. Each requests gets an unstaking height  
+
+#### Claim
+Sends currently all available ICX from SCORE back to the account.
+
+##### Distribute
+Function distribute rewards to the all the wallets involved in protocol, it also resolves each wallets join/leave requests.
+The function mints and burns the LICX ( total supply and each Wallet balance is being updated ).
+Everyone can call the function ( TODO: next step, fees as rewards, for who calls the function, etc.. ).  
+
+## Development
+### Installation
+
+To start local development you can choose between two options.
 
 1. Install and run tbears in docker container (quick and easy) or you can 
 2. Install tbears with PIP.
