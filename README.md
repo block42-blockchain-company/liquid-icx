@@ -53,7 +53,8 @@ To participate at the pool/protocol,they are also some other methods implemented
 ##### Join
 Adds a join (mint) request to the wallet, which converts ICX to LICX. Joining requests are resolved once per term in distribute function,
 which is described bellow. Each wallet has maximal of 10 join requests per term. LICX tokens are locked for 2 terms, since they are not producing any rewards yet, meaning you can not transfer them yet.
-ICX is then being staked and currently delegated to block42. ( TODO: next steps  ) 
+ICX is then being staked and currently delegated to block42. 
+This will be changed in future iterations and holders of LICX will be able to decide who they delegate their portion of ICX to.
 
 ##### Leave
 Adds a leave (burn) request to the wallet, which converts LICX back to ICX. Similar to the joining requests, also leave requests are resolved
@@ -63,9 +64,9 @@ once per term only. Each requests gets an unstaking height
 Sends currently all available ICX from SCORE back to the account.
 
 ##### Distribute
-Function distribute rewards to the all the wallets involved in protocol, it also resolves each wallets join/leave requests.
+Function distribute rewards to the all the eligble wallets ( currenlty wallets with more than 10 ICX, but this value can be changed) involved in protocol, it also resolves each wallets join/leave requests.
 The function mints and burns the LICX ( total supply and each Wallet balance is being updated ).
-Everyone can call the function ( TODO: next step, fees as rewards, for who calls the function, etc.. ).  
+Everyone can call the function, which benefits the whole ecosystem. In the future incentives to call the function will be implemented.
 
 ## Development
 ### Installation
