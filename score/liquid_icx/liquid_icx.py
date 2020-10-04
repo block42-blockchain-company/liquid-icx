@@ -108,7 +108,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @external(readonly=True)
     def balanceOf(self, _owner: Address) -> int:
-        return self._balances[_owner]
+        return self._balances[_owner] - Wallet(self.db, _owner).unstaking
 
     @external(readonly=True)
     def lockedOf(self, _owner: Address) -> int:
