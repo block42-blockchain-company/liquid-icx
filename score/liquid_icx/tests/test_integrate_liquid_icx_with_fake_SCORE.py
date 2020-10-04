@@ -26,7 +26,7 @@ def _is_distributed(event_logs: list) -> bool:
 
 class LiquidICXWithFakeSysSCORETest(LICXTestBase):
     LICX_FORCE_DEPLOY = True  # set to true, if you want to deploy new SCORES for each test
-    FAKE_SYS_SCORE_FORCE_DEPLOY = False  # set to true, if you want to deploy new SCORES for each test
+    FAKE_SYS_SCORE_FORCE_DEPLOY = True  # set to true, if you want to deploy new SCORES for each test
     TERM_LENGTH = 43120
 
     def setUp(self):
@@ -263,7 +263,30 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self._n_transfer_icx(wallet_list=wallets, to=self._wallet)
 
     def test_3_delete_from_linked_list(self):
-        pass
+        """
+        1. Set rewards to 100
+        2. Transfer 11 ICX to newly created wallets and make a join tx with them.
+        3. Increment term on fake sys SCORE and distribute
+        4. Transfer LICX, and check if the wallet was deleted from wallet's list
+        """
+        # 1
+        self._set_i_score(100 * 10 ** 21)
+        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10 ** 21))
+        # 2
+        wallets = self._n_join(10)
+        self.assertEqual(10, len(self._get_wallets()))
+        # 3
+        self._increment_term_for_n(n=2)
+        tx_distribute = self._distribute()
+        self.assertTrue(tx_distribute["status"], msg=pp.pformat(tx_distribute))
+        # 4
+        from_: KeyWallet = wallets[0].result()
+        to: KeyWallet = wallets[1].result()
+        self._transfer_licx_from_to(from_, to.get_address(), 9.5)
+        self.assertEqual(9, len(self._get_wallets()))
+
+
+
 
 
 if __name__ == '__main__':

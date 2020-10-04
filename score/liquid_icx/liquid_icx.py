@@ -68,9 +68,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         super().on_install()
 
         if _decimals < 0:
-            revert("Decimals cannot be less than zero")
-
-        Logger.debug(f'on_install: total_supply=0', TAG)
+            revert("LiquidICX: Decimals cannot be less than zero")
 
         self._total_supply.set(0)
         self._decimals.set(_decimals)
@@ -431,11 +429,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         # Emits an event log `Transfer`
         self.Transfer(_from, _to, _value, _data)
-        Logger.debug(f'Transfer({_from}, {_to}, {_value}, {_data})', TAG)
 
     @payable
     def fallback(self):
         """
         Called when anyone sends ICX to the SCORE.
         """
-        revert('LICX does not accept ICX. If you want to enter the pool, you need to call "join" method.')
+        revert('LiquidICX: LICX does not accept ICX. If you want to enter the pool, you need to call "join" method.')
