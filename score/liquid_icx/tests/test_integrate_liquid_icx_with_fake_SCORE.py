@@ -75,27 +75,19 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
             print(line, end='')
 
     def _estimateUnstakeLockPeriod(self) -> dict:
-        tx = self._build_transaction(to=self._fake_sys_score,
-                                     type_="read",
-                                     method="estimateUnstakeLockPeriod")
+        tx = self._build_transaction(to=self._fake_sys_score, type_="read", method="estimateUnstakeLockPeriod")
         return self.process_call(tx, self._icon_service)
 
     def _getPRepTerm(self) -> dict:
-        tx = self._build_transaction(to=self._fake_sys_score,
-                                     type_="read",
-                                     method="getPRepTerm")
+        tx = self._build_transaction(to=self._fake_sys_score, type_="read", method="getPRepTerm")
         return self.process_call(tx, self._icon_service)
 
     def _getIISSInfo(self) -> dict:
-        tx = self._build_transaction(to=self._fake_sys_score,
-                                     type_="read",
-                                     method="getIISSInfo")
+        tx = self._build_transaction(to=self._fake_sys_score, type_="read", method="getIISSInfo")
         return self.process_call(tx, self._icon_service)
 
     def _set_block_height(self, _new_height: int):
-        paras = {
-            "_new_height": _new_height
-        }
+        paras = {"_new_height": _new_height}
         tx = self._build_transaction(to=self._fake_sys_score, method="setBlockHeight", params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertEqual(self._getIISSInfo()["blockHeight"], hex(_new_height), msg=pp.pformat(tx_result))
@@ -120,22 +112,15 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
                              msg="startBlockHeight returns wrong value!")
 
     def _set_i_score(self, i_score):
-        paras = {
-            "_i_score": i_score
-        }
-        tx = self._build_transaction(to=self._fake_sys_score,
-                                     method="setIScore",
-                                     params=paras)
+        paras = {"_i_score": i_score}
+        tx = self._build_transaction(to=self._fake_sys_score, method="setIScore", params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertTrue(tx_result["status"], msg=tx_result)
         return tx_result
 
     def _query_i_score(self):
         paras = {"address": self._score_address}
-        tx = self._build_transaction(to=self._fake_sys_score,
-                                     type_="read",
-                                     method="queryIScore",
-                                     params=paras)
+        tx = self._build_transaction(to=self._fake_sys_score, type_="read", method="queryIScore", params=paras)
         return self.process_call(tx, self._icon_service)
 
     # -----------------------------------------------------------------------
@@ -163,7 +148,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         owner = self._get_wallet()
         self.assertEqual(len(owner["join_values"]), len(owner["unlock_heights"]))
         self.assertEqual(len(owner["join_values"]), 1)
-        self.assertEqual(owner["locked"], hex(join_value * 10 ** 18))
+        self.assertEqual(owner["locked"], hex(join_value * 10**18))
         self.assertEqual(self._total_supply(), hex(0))
         # 4
         self._increment_term_for_n(n=2)
@@ -177,12 +162,12 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         # 6
         tx_transfer = self._transfer_licx_from_to(self._wallet, self._wallet2.get_address(), value=2)
         self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
-        self.assertEqual(self._balance_of(self._wallet.get_address()), hex(10 * 10 ** 18))
-        self.assertEqual(self._balance_of(self._wallet2.get_address()), hex(2 * 10 ** 18))
+        self.assertEqual(self._balance_of(self._wallet.get_address()), hex(10 * 10**18))
+        self.assertEqual(self._balance_of(self._wallet2.get_address()), hex(2 * 10**18))
         # 7
         tx_transfer = self._transfer_licx_from_to(self._wallet2, self._wallet.get_address(), value=2)
         self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
-        self.assertEqual(self._balance_of(self._wallet.get_address()), hex(12 * 10 ** 18))
+        self.assertEqual(self._balance_of(self._wallet.get_address()), hex(12 * 10**18))
         self.assertEqual(self._balance_of(self._wallet2.get_address()), hex(0))
 
     def test_1_single_wallet_join_leave_claim(self):
@@ -209,7 +194,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         owner = self._get_wallet()
         self.assertEqual(len(owner["leave_values"]), 1, msg=pp.pformat(owner))
         self.assertEqual(len(owner["unstake_heights"]), 0, msg=pp.pformat(owner))
-        self.assertEqual(owner["unstaking"], hex(20 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(owner["unstaking"], hex(20 * 10**18), msg=pp.pformat(owner))
         # 5
         self._increment_term_for_n(n=1)
         tx_distribute = self._distribute()
@@ -217,10 +202,12 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         owner = self._get_wallet()
         self.assertEqual(len(owner["leave_values"]), len(owner["unstake_heights"]), msg=pp.pformat(owner))
         self.assertEqual(len(owner["unstake_heights"]), 1, msg=pp.pformat(owner))
-        self.assertEqual(owner["unstake_heights"][0], hex(int(self._getIISSInfo()["blockHeight"], 16) +
-                                                          int(self._estimateUnstakeLockPeriod()["unstakeLockPeriod"],
-                                                              16)))
-        self.assertEqual(owner["unstaking"], hex(20 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(
+            owner["unstake_heights"][0],
+            hex(
+                int(self._getIISSInfo()["blockHeight"], 16) +
+                int(self._estimateUnstakeLockPeriod()["unstakeLockPeriod"], 16)))
+        self.assertEqual(owner["unstaking"], hex(20 * 10**18), msg=pp.pformat(owner))
         # 6
         self._set_block_height(int(owner["unstake_heights"][0], 16))
         # 7
@@ -239,8 +226,8 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         # 1
         self._set_iteration_limit(10)
         self.assertEqual(hex(10), self._get_iteration_limit(), msg=pp.pformat(self._get_iteration_limit()))
-        self._set_i_score(100 * 10 ** 21)
-        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10 ** 21))
+        self._set_i_score(100 * 10**21)
+        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10**21))
         # 2
         wallets = self._n_join(100, workers=100)
         self.assertEqual(100, len(self._get_wallets()))
@@ -258,8 +245,8 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
             else:
                 break
         # 5
-        self._set_i_score(100 * 10 ** 21)
-        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10 ** 21))
+        self._set_i_score(100 * 10**21)
+        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10**21))
         self._n_leave(wallets, workers=100)
         self._increment_term_for_n(n=1)
         while True:

@@ -7,7 +7,7 @@ from tbears.libs.scoretest.score_test_case import ScoreTestCase
 # Basic Unit tests for LiquidICX.
 #
 class TestLiquidICX(ScoreTestCase):
-    MIN_VALUE_TO_GET_REWARDS = 10 * 10 ** 18
+    MIN_VALUE_TO_GET_REWARDS = 10 * 10**18
 
     def setUp(self):
         super().setUp()

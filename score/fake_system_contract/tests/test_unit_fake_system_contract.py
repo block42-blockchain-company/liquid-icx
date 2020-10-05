@@ -3,7 +3,6 @@ from tbears.libs.scoretest.score_test_case import ScoreTestCase
 
 
 class TestFakeSystemContract(ScoreTestCase):
-
     def setUp(self):
         super().setUp()
         self.score = self.get_score_instance(FakeSystemContract, self.test_account1)

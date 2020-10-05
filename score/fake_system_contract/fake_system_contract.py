@@ -58,9 +58,7 @@ class FakeSystemContract(IconScoreBase):
 
     @external(readonly=True)
     def getStake(self, address: Address) -> dict:
-        return {
-            "stake": self._stake.get()
-        }
+        return {"stake": self._stake.get()}
 
     @external
     def setDelegation(self, delegations: List[Delegation] = None) -> None:
@@ -69,15 +67,13 @@ class FakeSystemContract(IconScoreBase):
 
     @external(readonly=True)
     def getDelegation(self, address: Address) -> dict:
-        return {
-            "totalDelegated": self._delegation.get()
-        }
+        return {"totalDelegated": self._delegation.get()}
 
     @external
     def claimIScore(self) -> None:
         i_score = self.queryIScore(self.msg.sender)["estimatedICX"]
         self._i_score.set(0)
-        self.IScoreClaimedV2(self.msg.sender, int(i_score), int(i_score/1000))
+        self.IScoreClaimedV2(self.msg.sender, int(i_score), int(i_score / 1000))
 
     @external(readonly=True)
     def queryIScore(self, address: Address) -> dict:
@@ -89,9 +85,7 @@ class FakeSystemContract(IconScoreBase):
 
     @external(readonly=True)
     def estimateUnstakeLockPeriod(self) -> dict:
-        return {
-            "unstakeLockPeriod": self._unstakeLockPeriod.get()
-        }
+        return {"unstakeLockPeriod": self._unstakeLockPeriod.get()}
 
     @external(readonly=True)
     def getTermStartHeight(self) -> int:
@@ -112,10 +106,7 @@ class FakeSystemContract(IconScoreBase):
 
     @external(readonly=True)
     def getIISSInfo(self) -> dict:
-        return {
-            "nextPRepTerm": self._termStartHeight.get() + TERM_LENGTH,
-            "blockHeight": self._blockHeight.get()
-        }
+        return {"nextPRepTerm": self._termStartHeight.get() + TERM_LENGTH, "blockHeight": self._blockHeight.get()}
 
     @external(readonly=True)
     def getPRep(self, address: Address) -> dict:

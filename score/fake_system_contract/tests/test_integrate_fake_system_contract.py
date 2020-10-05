@@ -15,7 +15,7 @@ DIR_PATH = os.path.abspath(os.path.dirname(__file__))
 
 class TestTest(IconIntegrateTestBase):
     TEST_HTTP_ENDPOINT_URI_V3 = "https://bicon.net.solidwallet.io/api/v3"
-    SCORE_PROJECT= os.path.abspath(os.path.join(DIR_PATH, '..'))
+    SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
 
     def setUp(self, **kwargs):
         super().setUp()
@@ -61,7 +61,7 @@ class TestTest(IconIntegrateTestBase):
 
     def test_call_hello(self):
         # Generates a call instance using the CallBuilder
-        call = CallBuilder().from_(self._test1.get_address())             .to(self._score_address)             .method("hello")             .build()
+        call = CallBuilder().from_(self._test1.get_address()).to(self._score_address).method("hello").build()
 
         # Sends the call request
         response = self.process_call(call, self.icon_service)

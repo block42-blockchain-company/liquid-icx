@@ -54,11 +54,11 @@ class LiquidICXTest(LICXTestBase):
         self._join()
         self.assertEqual(len(self._get_wallets()), 11)
         owner = self._get_wallet()
-        self.assertEqual(owner["locked"], hex(2 * 10 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(owner["locked"], hex(2 * 10 * 10**18), msg=pp.pformat(owner))
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
         self.assertEqual(len(owner["unlock_heights"]), 2, msg=pp.pformat(owner))
-        self.assertEqual(self._get_staked(), hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
-        self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_staked(), hex(12 * 10 * 10**18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10**18), msg=pp.pformat(owner))
         owner = self._get_wallet()
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
         fallback_tx = self._transfer_icx_from_to(self._wallet, self._score_address, value=5, condition=False)
@@ -80,7 +80,7 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(leave_tx["status"], 0, msg=pp.pformat(leave_tx))
         self.assertEqual(leave_tx["failure"]["message"], "LiquidICX: Out of balance.", msg=pp.pformat(leave_tx))
         owner = self._get_wallet()
-        self.assertEqual(owner["locked"], hex(12 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(owner["locked"], hex(12 * 10**18), msg=pp.pformat(owner))
         self.assertEqual(owner["unstaking"], hex(0), msg=pp.pformat(owner))
 
     def test_2_join_cap(self):

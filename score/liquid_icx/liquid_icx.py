@@ -78,7 +78,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # We do not want to distribute the first < two terms, when SCORE is created
         self._last_distributed_height.set(self._system_score.getIISSInfo()["nextPRepTerm"])
 
-        self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
+        self._min_value_to_get_rewards.set(10 * 10**_decimals)
         self._iteration_limit.set(500)
         self._distributing.set(False)
 
@@ -297,7 +297,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     self._total_unstake_in_term.set(self._total_unstake_in_term.get() + wallet_leave)
 
                     # delete from wallets linked list
-                    if not len(wallet.join_values) and self._balances[curr_address] < self._min_value_to_get_rewards.get():
+                    if not len(wallet.join_values
+                               ) and self._balances[curr_address] < self._min_value_to_get_rewards.get():
                         curr_id = self._wallets.next(curr_id)
                         self._wallets.remove(wallet.node_id)
                     else:
@@ -328,10 +329,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Re-stake and re-delegate with the rewards claimed at the start of the cycle.
         """
         restake_value = self.getStaked() + self._rewards.get() - self._total_unstake_in_term.get()
-        delegation: Delegation = {
-            "address": PREP_ADDRESS,
-            "value": restake_value
-        }
+        delegation: Delegation = {"address": PREP_ADDRESS, "value": restake_value}
         if restake_value >= self.getStaked():
             self._system_score.setStake(restake_value)
             self._system_score.setDelegation([delegation])
@@ -344,9 +342,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         The function sets the following VarDB to the default state and updates the total supply of LICX.
         """
 
-        self._total_supply.set(self.totalSupply() +
-                               self._rewards.get() +
-                               self._new_unlocked_total.get() -
+        self._total_supply.set(self.totalSupply() + self._rewards.get() + self._new_unlocked_total.get() -
                                self._total_unstake_in_term.get())
         self._rewards.set(0)
         self._new_unlocked_total.set(0)
