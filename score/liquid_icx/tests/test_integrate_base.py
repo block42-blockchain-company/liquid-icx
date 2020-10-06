@@ -163,7 +163,8 @@ class LICXTestBase(IconIntegrateTestBase):
     def _n_transfer_icx(self, wallet_list: list, to: KeyWallet = None, workers: int = 10):
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for wallet in wallet_list:
-                pool.submit(self._transfer_icx_from_to, wallet, to, 9)
+                _from : KeyWallet = wallet.result()
+                pool.submit(self._transfer_icx_from_to,_from, to, self._icon_service.get_balance(_from.get_address()))
 
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------

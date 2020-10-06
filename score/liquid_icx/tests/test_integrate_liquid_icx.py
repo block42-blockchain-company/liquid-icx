@@ -2,6 +2,7 @@ import os
 import pprint as pp
 import fileinput
 
+from iconsdk.signed_transaction import SignedTransaction
 from tbears.libs.icon_integrate_test import  SCORE_INSTALL_ADDRESS
 
 from score.liquid_icx.tests.test_integrate_base import LICXTestBase
@@ -102,4 +103,15 @@ class LiquidICXTest(LICXTestBase):
         owner = self._get_wallet(self._wallet.get_address())
         self.assertEqual(7, len(owner["join_values"]))
         self.assertEqual(hex(7 * 30 * 10 ** 18), owner["locked"])
+
+    def test_3_join_with_SCORE(self):
+        test_join_score_address = "cxdda1febec68c13ea4e017afc8977bccc12aab4d8"
+        paras = {"address": self._score_address}
+        tx = self._build_transaction(to=test_join_score_address, method="setLICXAddress", params=paras)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertEqual(tx_result["status"], True, msg=pp.pformat(tx_result))
+        tx = self._build_transaction(to=test_join_score_address, value=10 * 10**18, method="joinLICX")
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertEqual(tx_result["status"], True, msg=pp.pformat(tx_result))
+        self.assertTrue(test_join_score_address in self._get_wallets())
 
