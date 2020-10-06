@@ -16,26 +16,9 @@ class LiquidICXTest(LICXTestBase):
 
     # Change to True, if you want to deploy a new SCORE for testing
     LOCAL_NETWORK_TEST = False
-    TEST_WITH_FAKE_SYS_SCORE = False
-
-    FAKE_SYS_SCORE_YEOUIDO = "cx2b01010a92bf78ee464be0b5eff94676e95cd757"
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        super().tearDownClass()
-        if LiquidICXTest.TEST_WITH_FAKE_SYS_SCORE:
-            cls.replace_in_consts_py(LiquidICXTest.FAKE_SYS_SCORE_YEOUIDO, SCORE_INSTALL_ADDRESS)
-
-    @classmethod
-    def replace_in_consts_py(cls, pattern, sub):
-        for line in fileinput.input("../scorelib/consts.py", inplace=1):
-            if "SYSTEM_SCORE" in line:
-                line = line.replace(pattern, sub)
-            print(line, end='')
 
     def setUp(self, **kwargs):
         super().setUp()
-
         if LiquidICXTest.FORCE_DEPLOY:
             self._score_address = self._deploy_score()["scoreAddress"]
             print(f"New SCORE address: {self._score_address}")
@@ -101,8 +84,8 @@ class LiquidICXTest(LICXTestBase):
                 break
         self.assertEqual(1, len(self._get_wallets()))
         owner = self._get_wallet(self._wallet.get_address())
-        self.assertEqual(7, len(owner["join_values"]))
-        self.assertEqual(hex(7 * 30 * 10 ** 18), owner["locked"])
+        self.assertEqual(6, len(owner["join_values"]))
+        self.assertEqual(hex(6 * 30 * 10 ** 18), owner["locked"])
 
     def test_3_join_with_SCORE(self):
         test_join_score_address = "cxdda1febec68c13ea4e017afc8977bccc12aab4d8"

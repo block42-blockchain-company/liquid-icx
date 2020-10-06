@@ -215,7 +215,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
 
     def test_2_join_with_100_wallets_distribute_transfer_leave_claim(self):
         """
-        1. Set iteration limit to 10 and set rewards to 100
+        1. Set iteration limit to 10, set rewards to 100 and increase cap
         2. Transfer 11 ICX to newly created wallets and make a join tx with them.
         3. Increment term on fake sys SCORE and distribute
         4. Tries to transfer between distribute calls, should fail
@@ -227,8 +227,10 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self.assertEqual(hex(10), self._get_iteration_limit(), msg=pp.pformat(self._get_iteration_limit()))
         self._set_i_score(100 * 10**21)
         self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10**21))
+        self._set_cap(1020)
         # 2
         wallets = self._n_join(100, workers=100)
+        time.sleep(10)  # sleep, since sometimes happens that transaction is still not mined
         self.assertEqual(100, len(self._get_wallets()))
         # 3
         self._increment_term_for_n(n=2)
