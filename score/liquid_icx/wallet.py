@@ -1,5 +1,4 @@
 from .liquid_icx import *
-from .interfaces.system_score_interface import InterfaceSystemScore
 from .scorelib.utils import *
 
 
