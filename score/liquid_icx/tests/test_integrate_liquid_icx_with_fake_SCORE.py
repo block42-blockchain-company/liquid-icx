@@ -261,7 +261,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         # 6
         self._set_block_height(int(wallet["unstake_heights"][0], 16))
         self._n_claim(wallet_list=wallets, workers=100)
-        self._n_transfer_icx(wallet_list=wallets, to=self._wallet)
+
 
     def test_3_delete_from_linked_list(self):
         """
@@ -299,7 +299,6 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self._set_block_height(int(wallet["unstake_heights"][0], 16))
         # 7
         self._n_claim(wallet_list=wallets, workers=100)
-        self._n_transfer_icx(wallet_list=wallets, to=self._wallet)
 
 
 if __name__ == '__main__':
