@@ -1,6 +1,7 @@
 import unittest
 import os
 import pprint as pp
+from asyncio import Future
 from concurrent.futures.thread import ThreadPoolExecutor
 
 from iconsdk.builder.call_builder import CallBuilder
@@ -162,7 +163,8 @@ class LICXTestBase(IconIntegrateTestBase):
     def _n_transfer_icx(self, wallet_list: list, to: KeyWallet = None, workers: int = 10):
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for wallet in wallet_list:
-                pool.submit(self._transfer_icx_from_to, wallet, to, 9)
+                _from : KeyWallet = wallet.result()
+                pool.submit(self._transfer_icx_from_to,_from, to, self._icon_service.get_balance(_from.get_address()))
 
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
@@ -260,6 +262,20 @@ class LICXTestBase(IconIntegrateTestBase):
         self.assertEqual(tx_result["status"], condition, msg=tx_result)
         return tx_result
 
+    def _set_min_value_to_get_rewards(self, value, condition: bool = True):
+        paras = {
+            "_value": value
+        }
+        tx = self._build_transaction(method="setMinValueToGetRewards", params=paras)
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertEqual(tx_result["status"], condition, msg=tx_result)
+        return tx_result
+
+    def _get_min_value_to_get_rewards(self):
+        tx = self._build_transaction(method="getMinValueToGetRewards", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        return tx_result
+
     def _get_cap(self):
         tx = self._build_transaction(method="getCap", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
@@ -283,13 +299,13 @@ class LICXTestBase(IconIntegrateTestBase):
         # pp.pprint(tx_result)
         return tx_result
 
-    def _transfer_licx_from_to(self, from_: KeyWallet = None, to: str = None, value: int = None):
+    def _transfer_licx_from_to(self, from_: KeyWallet = None, to: str = None, value=None):
         from_ = self._wallet if from_ is None else from_
         to = self._wallet2.get_address() if to is None else to
         value = value if value is not None else 1
         paras = {
             "_to": to,
-            "_value": value * 10 ** 18
+            "_value": int(value * 10 ** 18)
         }
         tx = self._build_transaction(method="transfer", params=paras, from_=from_.get_address())
         tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
