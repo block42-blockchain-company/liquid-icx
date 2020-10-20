@@ -70,7 +70,7 @@ def send_distribute_tx():
         .from_(WALLET.get_address()) \
         .to(SCORE_ADDRESS) \
         .value(0) \
-        .nid(3) \
+        .nid(NETWORK_ID) \
         .step_limit(500000000) \
         .nonce(100) \
         .method("distribute") \

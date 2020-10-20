@@ -43,6 +43,7 @@ def start(update, context):
                               f"SCORE Address = {SCORE_ADDRESS}\n\n"
                               f"See you later!", parse_mode='markdown')
 
+
 @run_async
 def distribute_handler(update, context):
     """
@@ -52,9 +53,9 @@ def distribute_handler(update, context):
     if not is_admin(update):
         return
 
-    term_bounds = getCurrentTermBounds()
-    last_distribute_height = getLastDistributeEventHeight()
     try:
+        term_bounds = getCurrentTermBounds()
+        last_distribute_height = getLastDistributeEventHeight()
         distribute(context, term_bounds, last_distribute_height)
     except Exception as e:
         logger.error(f"Distribute call failed:\n{e}")
@@ -77,7 +78,12 @@ def distribution_ready_check(context):
         if SCORE_CREATED_HEIGHT + (43120 * 2) < term_bounds["start"] and term_bounds["start"] > last_distribute_height:
             distribute(context, term_bounds, last_distribute_height)
     except Exception as e:
-        logger.error(e)
+        logger.error(f"Is distribute ready check failed:\n{e}")
+        text = f"‼️ *LICX* Is-distribute-ready check *failed* " \
+               f"for term {term_bounds['start']} - {term_bounds['end']} ‼\n\n" \
+               f"Error message:\n" \
+               f"{e.message}"
+        try_message_to_all_users(dispatcher=context.dispatcher, text=text)
 
 
 def distribute(context, term_bounds, initial_distribute_height):

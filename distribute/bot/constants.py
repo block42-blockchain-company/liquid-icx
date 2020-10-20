@@ -6,12 +6,25 @@ from iconsdk.providers.http_provider import HTTPProvider
 from iconsdk.wallet.wallet import KeyWallet
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-ICX_SERVICE = IconService(HTTPProvider(os.getenv("ICON_SERVICE_PROVIDER")))
+NETWORK = os.getenv("NETWORK", "TESTNET")
 SCORE_ADDRESS = os.getenv("SCORE_ADDRESS")
-TRACKER_API = os.getenv("TRACKER_API_URL")
 WALLET = KeyWallet.load(bytes.fromhex(os.getenv("PRIVATE_KEY")))
 ADMIN_USER_IDS = [int(admin_id) for admin_id in
                   os.environ['ADMIN_USER_IDS'].split(",")] if 'ADMIN_USER_IDS' in os.environ else []
+
+if NETWORK == "MAINNET":
+    TRACKER_API = "https://tracker.icon.foundation/v3"
+    ICON_SERVICE_PROVIDER = "https://ctz.solidwallet.io/api/v3"
+    NETWORK_ID = 1
+elif NETWORK == "TESTNET":
+    TRACKER_API = "https://bicon.tracker.solidwallet.io/v3"
+    ICON_SERVICE_PROVIDER = "https://bicon.net.solidwallet.io/api/v3"
+    NETWORK_ID = 3
+else:
+    logging.error("No valid network is specified!")
+    exit(69)
+
+ICX_SERVICE = IconService(HTTPProvider(ICON_SERVICE_PROVIDER))
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
