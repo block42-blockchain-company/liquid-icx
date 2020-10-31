@@ -122,22 +122,25 @@ def try_message(dispatcher, chat_id, text, reply_markup=None):
     try:
         dispatcher.bot.send_message(chat_id, text, parse_mode='markdown', reply_markup=reply_markup)
     except TelegramError as e:
-        if 'bot was blocked by the user' in e.message:
-            print("Telegram user " + str(chat_id) + " blocked me; removing him from the user list")
+        if 'bot was blocked by the user' in e.message or "Chat not found" in e.message:
+            print("Telegram user " + str(chat_id) + " blocked me or does not exist; removing him from the user list")
             delete_user(dispatcher, chat_id)
         else:
             print("Got Error\n" + str(e) + "\nwith telegram user " + str(chat_id))
 
 
 def delete_user(dispatcher, chat_id):
-    del dispatcher.user_data[chat_id]
     del dispatcher.chat_data[chat_id]
-    del dispatcher.persistence.user_data[chat_id]
     del dispatcher.persistence.chat_data[chat_id]
+
+    if chat_id in dispatcher.user_data:
+        del dispatcher.user_data[chat_id]
+    if chat_id in dispatcher.persistence.user_data:
+        del dispatcher.persistence.user_data[chat_id]
 
     # Somehow session.data does not get updated if all users block the bot.
     # That makes problems on bot restart. That's why we delete the file ourselves.
-    if len(dispatcher.persistence.user_data) == 0:
+    if len(dispatcher.persistence.chat_data) == 0:
         if os.path.exists(session_data_path):
             os.remove(session_data_path)
 
