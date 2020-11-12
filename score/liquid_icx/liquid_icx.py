@@ -347,6 +347,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distribute_it.set(0)
         self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
         self._distributing.set(False)
+        self._total_unstake_in_term.set(0)
         self.Distribute(self.block_height)
 
     def _join(self, sender: Address, value: int) -> None:
