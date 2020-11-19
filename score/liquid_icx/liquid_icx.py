@@ -49,8 +49,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._rewards = VarDB("rewards", db, int)
         self._new_unlocked_total = VarDB("new_unlocked_total", db, int)
-
-        self._total_unstake_in_term = VarDB("_total_unstake_in_term", db, int)
+        self._total_unstake_in_term = VarDB("total_unstake_in_term", db, int)
 
         self._last_distributed_height = VarDB("last_distributed_height", db, int)
 
@@ -146,6 +145,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return self._min_value_to_get_rewards.get()
 
     @external(readonly=True)
+    def getTotalUnstakeInTerm(self) -> int:
+        return self._total_unstake_in_term.get()
+
+    @external(readonly=True)
     def selectFromWallets(self, address: str) -> list:
         return self._wallets.select(0, self.linkedlistdb_sentinel, match=address)
 
@@ -157,6 +160,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def getCap(self) -> int:
         return self._cap.get()
 
+    @external(readonly=True)
+    def newUnlockedTotal(self) -> int:
+        return self._new_unlocked_total.get()
+
+    @external(readonly=True)
+    def totalUnstakedInTerm(self) -> int:
+        return self._total_unstake_in_term.get()
 
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:
@@ -344,10 +354,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                                self._total_unstake_in_term.get())
         self._rewards.set(0)
         self._new_unlocked_total.set(0)
+        self._total_unstake_in_term.set(0)
         self._distribute_it.set(0)
         self._last_distributed_height.set(self._system_score.getPRepTerm()["startBlockHeight"])
         self._distributing.set(False)
-        self._total_unstake_in_term.set(0)
         self.Distribute(self.block_height)
 
     def _join(self, sender: Address, value: int) -> None:

@@ -241,8 +241,8 @@ class LICXTestBase(IconIntegrateTestBase):
 
     def _get_rewards(self):
         tx = self._build_transaction(method="rewards", type_="read")
-        tx_result = self.process_call(tx, self._icon_service)
-        # pp.pprint(tx_result)
+        return self.process_call(tx, self._icon_service)
+
 
     def _set_iteration_limit(self, limit: int = 500):
         paras = {
@@ -278,6 +278,16 @@ class LICXTestBase(IconIntegrateTestBase):
 
     def _get_cap(self):
         tx = self._build_transaction(method="getCap", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        return tx_result
+
+    def _get_new_unlocked_total(self):
+        tx = self._build_transaction(method="newUnlockedTotal", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        return tx_result
+
+    def _get_total_unstaked_in_term(self):
+        tx = self._build_transaction(method="totalUnstakedInTerm", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         return tx_result
 

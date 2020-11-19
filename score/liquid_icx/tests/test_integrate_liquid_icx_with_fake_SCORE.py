@@ -133,8 +133,9 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         3. Checking if user's data is still untouched / Checking total_supply
         4. Increment term on fake System SCORE
         5. Distribute, so the user has unlocked LICX and perform checks
-        6. Transfer 2 LICX to wallet2
-        7. Transfer 2 LICX from wallet2 back to owner's wallet
+        6. Check stateDB variables
+        7. Transfer 2 LICX to wallet2
+        8. Transfer 2 LICX from wallet2 back to owner's wallet
         """
         # 1
         join_value = 12
@@ -148,7 +149,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         owner = self._get_wallet()
         self.assertEqual(len(owner["join_values"]), len(owner["unlock_heights"]))
         self.assertEqual(len(owner["join_values"]), 1)
-        self.assertEqual(owner["locked"], hex(join_value * 10**18))
+        self.assertEqual(owner["locked"], hex(join_value * 10 ** 18))
         self.assertEqual(self._total_supply(), hex(0))
         # 4
         self._increment_term_for_n(n=2)
@@ -160,14 +161,18 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self.assertEqual(len(owner["join_values"]), 0)
         self.assertEqual(owner["locked"], hex(0))
         # 6
+        self.assertEqual(self._get_rewards(), hex(0))
+        self.assertEqual(self._get_new_unlocked_total(), hex(0))
+        self.assertEqual(self._get_total_unstaked_in_term(), hex(0))
+        # 6
         tx_transfer = self._transfer_licx_from_to(self._wallet, self._wallet2.get_address(), value=2)
         self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
-        self.assertEqual(self._balance_of(self._wallet.get_address()), hex(10 * 10**18))
-        self.assertEqual(self._balance_of(self._wallet2.get_address()), hex(2 * 10**18))
+        self.assertEqual(self._balance_of(self._wallet.get_address()), hex(10 * 10 ** 18))
+        self.assertEqual(self._balance_of(self._wallet2.get_address()), hex(2 * 10 ** 18))
         # 7
         tx_transfer = self._transfer_licx_from_to(self._wallet2, self._wallet.get_address(), value=2)
         self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
-        self.assertEqual(self._balance_of(self._wallet.get_address()), hex(12 * 10**18))
+        self.assertEqual(self._balance_of(self._wallet.get_address()), hex(12 * 10 ** 18))
         self.assertEqual(self._balance_of(self._wallet2.get_address()), hex(0))
 
     def test_1_single_wallet_join_leave_claim(self):
@@ -194,11 +199,14 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         owner = self._get_wallet()
         self.assertEqual(len(owner["leave_values"]), 1, msg=pp.pformat(owner))
         self.assertEqual(len(owner["unstake_heights"]), 0, msg=pp.pformat(owner))
-        self.assertEqual(owner["unstaking"], hex(20 * 10**18), msg=pp.pformat(owner))
+        self.assertEqual(owner["unstaking"], hex(20 * 10 ** 18), msg=pp.pformat(owner))
         # 5
         self._increment_term_for_n(n=1)
         tx_distribute = self._distribute()
         self.assertTrue(tx_distribute["status"], msg=pp.pformat(tx_distribute))
+        self.assertEqual(self._get_rewards(), hex(0))
+        self.assertEqual(self._get_new_unlocked_total(), hex(0))
+        self.assertEqual(self._get_total_unstaked_in_term(), hex(0))
         owner = self._get_wallet()
         self.assertEqual(len(owner["leave_values"]), len(owner["unstake_heights"]), msg=pp.pformat(owner))
         self.assertEqual(len(owner["unstake_heights"]), 1, msg=pp.pformat(owner))
@@ -220,13 +228,14 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         3. Increment term on fake sys SCORE and distribute
         4. Tries to transfer between distribute calls, should fail
         5. Set i_score, create leave request for all wallets and distribute again to resolve leave them
-        6. Set new block height on fake System SCORE, claim back ICX and send them to original wallet
+        6. Check if the stateDB wallets are reseted
+        7. Set new block height on fake System SCORE, claim back ICX and send them to original wallet
         """
         # 1
         self._set_iteration_limit(10)
         self.assertEqual(hex(10), self._get_iteration_limit(), msg=pp.pformat(self._get_iteration_limit()))
-        self._set_i_score(100 * 10**21)
-        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10**21))
+        self._set_i_score(100 * 10 ** 21)
+        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10 ** 21))
         self._set_cap(1020)
         # 2
         wallets = self._n_join(100, workers=100)
@@ -246,8 +255,8 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
             else:
                 break
         # 5
-        self._set_i_score(100 * 10**21)
-        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10**21))
+        self._set_i_score(100 * 10 ** 21)
+        self.assertEqual(self._query_i_score()["iscore"], hex(100 * 10 ** 21))
         self._n_leave(wallets, workers=100)
         self._increment_term_for_n(n=1)
         while True:
@@ -259,9 +268,12 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self.assertEqual(len(wallet["leave_values"]), len(wallet["unstake_heights"]), msg=pp.pformat(wallet))
         self.assertEqual(len(wallet["unstake_heights"]), 1, msg=pp.pformat(wallet))
         # 6
+        self.assertEqual(self._get_rewards(), hex(0))
+        self.assertEqual(self._get_new_unlocked_total(), hex(0))
+        self.assertEqual(self._get_total_unstaked_in_term(), hex(0))
+        # 7
         self._set_block_height(int(wallet["unstake_heights"][0], 16))
         self._n_claim(wallet_list=wallets, workers=100)
-
 
     def test_3_delete_from_linked_list(self):
         """
@@ -299,6 +311,8 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self._set_block_height(int(wallet["unstake_heights"][0], 16))
         # 7
         self._n_claim(wallet_list=wallets, workers=100)
+
+        
 
 
 if __name__ == '__main__':
