@@ -25,21 +25,21 @@ def _is_distributed(event_logs: list) -> bool:
 
 
 class LiquidICXWithFakeSysSCORETest(LICXTestBase):
-    LICX_FORCE_DEPLOY = True  # set to true, if you want to deploy new SCORES for each test
-    FAKE_SYS_SCORE_FORCE_DEPLOY = True  # set to true, if you want to deploy new SCORES for each test
     TERM_LENGTH = 43120
 
     def setUp(self):
         super().setUp()
 
-        if self.FAKE_SYS_SCORE_FORCE_DEPLOY:
-            self._fake_sys_score = self._deployFakeSystemSCORE()["scoreAddress"]
-            print(f"New FAKE SYS SCORE address: {self._fake_sys_score}")
+        wallet2_balance = self._icon_service.get_balance(self._wallet2.get_address())
+        if not wallet2_balance:
+            self._transfer_icx_from_to(self._wallet, self._wallet2, 1000)
 
-        if self.LICX_FORCE_DEPLOY:
-            self.replace_in_consts_py(SCORE_INSTALL_ADDRESS, self._fake_sys_score)
-            self._score_address = self._deploy_score()["scoreAddress"]
-            print(f"New SCORE address: {self._score_address}")
+        self._fake_sys_score = self._deployFakeSystemSCORE()["scoreAddress"]
+        print(f"New FAKE SYS SCORE address: {self._fake_sys_score}")
+
+        self.replace_in_consts_py(SCORE_INSTALL_ADDRESS, self._fake_sys_score)
+        self._score_address = self._deploy_score()["scoreAddress"]
+        print(f"New SCORE address: {self._score_address}")
 
     def tearDown(self):
         self.replace_in_consts_py(self._fake_sys_score, SCORE_INSTALL_ADDRESS)
@@ -221,6 +221,7 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         tx_claim = self._claim()
         self.assertTrue(tx_claim["status"], msg=pp.pformat(tx_claim))
 
+
     def test_2_join_with_100_wallets_distribute_transfer_leave_claim(self):
         """
         1. Set iteration limit to 10, set rewards to 100 and increase cap
@@ -311,8 +312,6 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self._set_block_height(int(wallet["unstake_heights"][0], 16))
         # 7
         self._n_claim(wallet_list=wallets, workers=100)
-
-        
 
 
 if __name__ == '__main__':

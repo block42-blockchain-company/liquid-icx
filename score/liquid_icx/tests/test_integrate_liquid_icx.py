@@ -12,22 +12,15 @@ DIR_PATH = os.path.abspath(os.path.dirname(__file__))
 class LiquidICXTest(LICXTestBase):
     SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
 
-    FORCE_DEPLOY = True
-
-    # Change to True, if you want to deploy a new SCORE for testing
-    LOCAL_NETWORK_TEST = False
-
     def setUp(self, **kwargs):
         super().setUp()
-        if LiquidICXTest.FORCE_DEPLOY:
-            self._score_address = self._deploy_score()["scoreAddress"]
-            print(f"New SCORE address: {self._score_address}")
+        self._score_address = self._deploy_score()["scoreAddress"]
+        print(f"New SCORE address: {self._score_address}")
 
     def test_score_update(self):
         # update SCORE
-        if not LiquidICXTest.FORCE_DEPLOY:
-            tx_result = self._deploy_score(self._score_address)
-            self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=pp.pformat(tx_result))
+        tx_result = self._deploy_score(self._score_address)
+        self.assertEqual(self._score_address, tx_result['scoreAddress'], msg=pp.pformat(tx_result))
 
     def test_0_join_delegate_stake_fallback(self):
         """
