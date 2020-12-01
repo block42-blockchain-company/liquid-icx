@@ -13,8 +13,6 @@ from iconsdk.signed_transaction import SignedTransaction
 from iconsdk.wallet.wallet import KeyWallet
 from tbears.libs.icon_integrate_test import IconIntegrateTestBase, SCORE_INSTALL_ADDRESS
 from iconservice.icon_constant import GOVERNANCE_ADDRESS
-from dotenv import load_dotenv
-
 
 
 class LICXTestBase(IconIntegrateTestBase):
@@ -32,7 +30,7 @@ class LICXTestBase(IconIntegrateTestBase):
             cls._score_address = str()
             cls._fake_sys_score = str()
         else:
-            cls._wallet = KeyWallet.load("../../keystore_test1", "test1_Account")
+            cls._wallet = cls._test1
             cls._wallet2 = KeyWallet.create()
             cls._icon_service = IconService(HTTPProvider("http://127.0.0.1:9000/api/v3"))
             cls._score_address = str()
