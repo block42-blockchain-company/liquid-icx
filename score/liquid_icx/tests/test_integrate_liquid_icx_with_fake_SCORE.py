@@ -27,6 +27,8 @@ def _is_distributed(event_logs: list) -> bool:
 class LiquidICXWithFakeSysSCORETest(LICXTestBase):
     TERM_LENGTH = 43120
 
+    LOCAL_NETWORK_TEST = False
+
     def setUp(self):
         super().setUp()
 

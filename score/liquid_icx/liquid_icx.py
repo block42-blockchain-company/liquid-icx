@@ -164,9 +164,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def newUnlockedTotal(self) -> int:
         return self._new_unlocked_total.get()
 
-    @external(readonly=True)
-    def totalUnstakedInTerm(self) -> int:
-        return self._total_unstake_in_term.get()
 
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:

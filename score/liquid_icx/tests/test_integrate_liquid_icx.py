@@ -3,14 +3,15 @@ import pprint as pp
 import fileinput
 
 from iconsdk.signed_transaction import SignedTransaction
-from tbears.libs.icon_integrate_test import  SCORE_INSTALL_ADDRESS
+from tbears.libs.icon_integrate_test import SCORE_INSTALL_ADDRESS
 
+from score.join_score.tests.deploy import deployJoinScore
 from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
-DIR_PATH = os.path.abspath(os.path.dirname(__file__))
 
 class LiquidICXTest(LICXTestBase):
-    SCORE_PROJECT = os.path.abspath(os.path.join(DIR_PATH, '..'))
+
+    LOCAL_NETWORK_TEST = False
 
     def setUp(self, **kwargs):
         super().setUp()
@@ -113,20 +114,30 @@ class LiquidICXTest(LICXTestBase):
 
     def test_3_join_with_SCORE(self):
         """
-        1. SET LICX addres for Score the will try to join
-        2. Join with that SCORE, and check if it appears in linked_list
+        1. Deploy SCORE, that will join to LICX protocol
+        2. SET LICX address for the joining score
+        3. Join with that SCORE, and check if it appears in linked_list
+        4. Join with hx wallet and check wallets length
         """
         # 1
-        test_join_score_address = "cxdda1febec68c13ea4e017afc8977bccc12aab4d8"
+        deploy_tx = deployJoinScore(self._wallet, self._icon_service, self.process_transaction)
+        self.assertEqual(True, deploy_tx["status"], msg=pp.pformat(deploy_tx))
+        test_join_score_address = deploy_tx["scoreAddress"]
+        print(f"Joining SCORE ddress: {test_join_score_address}")
         paras = {"address": self._score_address}
+        # 2
         tx = self._build_transaction(to=test_join_score_address, method="setLICXAddress", params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertEqual(tx_result["status"], True, msg=pp.pformat(tx_result))
-        # 2
+        # 3
         tx = self._build_transaction(to=test_join_score_address, value=10 * 10**18, method="joinLICX")
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertEqual(tx_result["status"], True, msg=pp.pformat(tx_result))
         self.assertTrue(test_join_score_address in self._get_wallets())
+        # 4
+        self._join()
+        self.assertEqual(len(self._get_wallets()), 2, msg=pp.pformat(self._get_wallets()))
+
 
 
 

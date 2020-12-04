@@ -33,8 +33,7 @@ class Wallet:
         if self.node_id == 0:
             self._node_id.set(node_id)
 
-        sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
-        iiss_info = sys_score.getIISSInfo()
+        iiss_info = self.__sys_score.getIISSInfo()
 
         self._join_values.put(join_amount)
         self._unlock_heights.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)

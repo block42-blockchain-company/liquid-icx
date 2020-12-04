@@ -17,8 +17,6 @@ from iconservice.icon_constant import GOVERNANCE_ADDRESS
 
 class LICXTestBase(IconIntegrateTestBase):
 
-    LOCAL_NETWORK_TEST = True
-
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -290,7 +288,7 @@ class LICXTestBase(IconIntegrateTestBase):
         return tx_result
 
     def _get_total_unstaked_in_term(self):
-        tx = self._build_transaction(method="totalUnstakedInTerm", type_="read")
+        tx = self._build_transaction(method="getTotalUnstakeInTerm", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         return tx_result
 
