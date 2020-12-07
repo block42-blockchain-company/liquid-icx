@@ -33,6 +33,10 @@ class LICXTestBase(IconIntegrateTestBase):
             cls._icon_service = IconService(HTTPProvider("http://127.0.0.1:9000/api/v3"))
             cls._score_address = str()
 
+    def setUp(self) -> None:
+        super().setUp()
+        self._block_confirm_interval = 2 if self.LOCAL_NETWORK_TEST else 5
+
     # -----------------------------------------------------------------------
     # ----------------------- testing helper methods ------------------------
     # -----------------------------------------------------------------------
