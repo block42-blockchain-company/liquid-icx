@@ -3,6 +3,8 @@ from .scorelib.utils import *
 
 
 class Wallet:
+    __sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
+
     def __init__(self, db: IconScoreDatabase, _address: Address):
         self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
         self._unstaking = VarDB("unstaking_" + _address.__str__(), db, value_type=int)
@@ -31,7 +33,7 @@ class Wallet:
         if self.node_id == 0:
             self._node_id.set(node_id)
 
-        iiss_info = Utils.system_score_interface().getIISSInfo()
+        iiss_info = self.__sys_score.getIISSInfo()
 
         self._join_values.put(join_amount)
         self._unlock_heights.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
@@ -58,8 +60,8 @@ class Wallet:
 
         leave_amount = 0
         if len(self._leave_values) != len(self._unstake_heights):
-            current_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
-            unstake_period = Utils.system_score_interface().estimateUnstakeLockPeriod()["unstakeLockPeriod"]
+            current_height = self.__sys_score.getIISSInfo()["blockHeight"]
+            unstake_period = self.__sys_score.estimateUnstakeLockPeriod()["unstakeLockPeriod"]
 
             for it in range(len(self._unstake_heights), len(self._leave_values)):
                 leave_amount = leave_amount + self._leave_values[it]
@@ -74,7 +76,7 @@ class Wallet:
 
         unlocked = 0
         if self.locked > 0:
-            next_term = Utils.system_score_interface().getIISSInfo()["nextPRepTerm"]
+            next_term = self.__sys_score.getIISSInfo()["nextPRepTerm"]
             while self._unlock_heights:
                 if next_term > self._unlock_heights[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
@@ -94,7 +96,7 @@ class Wallet:
 
         claim_amount = 0
         if len(self._unstake_heights):
-            block_height = Utils.system_score_interface().getIISSInfo()["blockHeight"]
+            block_height = self.__sys_score.getIISSInfo()["blockHeight"]
             while len(self._unstake_heights):
                 if block_height >= self._unstake_heights[0]:
                     claim_amount = claim_amount + self._leave_values[0]

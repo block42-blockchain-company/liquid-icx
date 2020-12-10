@@ -12,28 +12,30 @@ from iconsdk.providers.http_provider import HTTPProvider
 from iconsdk.signed_transaction import SignedTransaction
 from iconsdk.wallet.wallet import KeyWallet
 from tbears.libs.icon_integrate_test import IconIntegrateTestBase, SCORE_INSTALL_ADDRESS
-from dotenv import load_dotenv
+from iconservice.icon_constant import GOVERNANCE_ADDRESS
 
 
 class LICXTestBase(IconIntegrateTestBase):
-    _wallet: KeyWallet
-    LOCAL_NETWORK_TEST = False
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        load_dotenv()
 
         if not cls.LOCAL_NETWORK_TEST:
             cls._wallet = KeyWallet.load("../../keystore_test3", "test3_Account")
             cls._wallet2 = KeyWallet.load("../../keystore_test2", "test2_Account")
-            cls._icon_service = IconService(HTTPProvider(os.getenv("YEUOIDO_NET_URL")))
-            cls._score_address = os.getenv("YEUOIDO_SCORE_ADDRESS")
-            cls._fake_sys_score = os.getenv("YEUOIDO_FAKE_SYS_SCORE")
+            cls._icon_service = IconService(HTTPProvider("https://bicon.net.solidwallet.io/api/v3"))
+            cls._score_address = str()
+            cls._fake_sys_score = str()
         else:
-            cls._wallet = KeyWallet.load("../../keystore_test1", "test1_Account")
-            cls._icon_service = IconService(HTTPProvider(os.getenv("LOCAL_NET_URL")))
-            cls._score_address = os.getenv("LOCAL_SCORE_ADDRESS")
+            cls._wallet = cls._test1
+            cls._wallet2 = KeyWallet.create()
+            cls._icon_service = IconService(HTTPProvider("http://127.0.0.1:9000/api/v3"))
+            cls._score_address = str()
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._block_confirm_interval = 2 if self.LOCAL_NETWORK_TEST else 5
 
     # -----------------------------------------------------------------------
     # ----------------------- testing helper methods ------------------------
@@ -110,9 +112,12 @@ class LICXTestBase(IconIntegrateTestBase):
         return tx
 
     def _estimate_steps(self, margin) -> int:
+        if self.LOCAL_NETWORK_TEST:
+            return int("0x61a8", 16) + margin
+
         tx = self._build_transaction(type_="read",
                                      method="getStepCosts",
-                                     to=os.getenv("GOV_SCORE_ADDRESS"),
+                                     to=GOVERNANCE_ADDRESS,
                                      params={})
         result = self._icon_service.call(tx)
         return int(result["contractCall"], 16) + margin
@@ -241,8 +246,8 @@ class LICXTestBase(IconIntegrateTestBase):
 
     def _get_rewards(self):
         tx = self._build_transaction(method="rewards", type_="read")
-        tx_result = self.process_call(tx, self._icon_service)
-        # pp.pprint(tx_result)
+        return self.process_call(tx, self._icon_service)
+
 
     def _set_iteration_limit(self, limit: int = 500):
         paras = {
@@ -278,6 +283,16 @@ class LICXTestBase(IconIntegrateTestBase):
 
     def _get_cap(self):
         tx = self._build_transaction(method="getCap", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        return tx_result
+
+    def _get_new_unlocked_total(self):
+        tx = self._build_transaction(method="newUnlockedTotal", type_="read")
+        tx_result = self.process_call(tx, self._icon_service)
+        return tx_result
+
+    def _get_total_unstaked_in_term(self):
+        tx = self._build_transaction(method="getTotalUnstakeInTerm", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
         return tx_result
 
