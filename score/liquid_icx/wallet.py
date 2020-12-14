@@ -20,9 +20,17 @@ class Wallet:
         # Wallet ID in linked list
         self._node_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
 
-    def join(self, join_amount: int, node_id: int = None):
+        # Tracking individual wallet's delegations
+        self._voting = VarDB("voting_" + str(_address), db, value_type=int)
+        self._delegation_addr = ArrayDB("delegation_addr_" + str(_address), db, value_type=str)
+        self._delegation_value = ArrayDB("delegation_value_" + str(_address), db, value_type=int)
+        # self._delegation_bps = ArrayDB("delegation_bps_" + str(_address), db, value_type=int)
+
+    def join(self, join_amount: int, delegation: dict, voting: bool, node_id: int = None):
         """
         Adds new values to the wallet's join queues
+        :param voting:
+        :param delegation:
         :param node_id: Id in wallet linked list
         :param join_amount: amount of ICX that a wallet sent
         """
@@ -38,6 +46,22 @@ class Wallet:
         self._join_values.put(join_amount)
         self._unlock_heights.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
         self.locked = self.locked + join_amount
+
+        if voting:
+            delegation_amount_sum = 0
+            for addr, value in delegation.items():
+                if addr not in self._delegation_addr:
+                    self._delegation_addr.put(addr)
+                    self._delegation_value.put(value)
+                else:
+                    index = list(self._delegation_addr).index(addr)
+                    self._delegation_value[index] += value
+                delegation_amount_sum += value
+
+            if delegation_amount_sum != join_amount:
+                revert(f"LiquidICX: Delegations values do not match to the amount of ICX sent. {delegation_amount_sum} : {join_amount}")
+
+            self.voting = 1
 
     def requestLeave(self, _leave_amount):
         """
@@ -148,6 +172,26 @@ class Wallet:
     def node_id(self, value):
         self._node_id.set(value)
 
+    @property
+    def voting(self):
+        return self._voting.get()
+
+    @voting.setter
+    def voting(self, voting: int):
+        self._voting.set(voting)
+
+    @property
+    def delegation_addr(self):
+        return self._delegation_addr
+
+    @property
+    def delegation_value(self):
+        return self._delegation_value
+
+    # @property
+    # def delegation_value(self):
+    #     return self._delegation_bps
+
     def serialize(self) -> dict:
         return {
             "locked": self.locked,
@@ -156,4 +200,8 @@ class Wallet:
             "unstaking": self.unstaking,
             "leave_values": list(self.leave_values),
             "unstake_heights": list(self.unstake_heights),
+            "voting": self.voting,
+            "delegation_addr": list(self.delegation_addr),
+            "delegation_values": list(self._delegation_value),
+            # "delegation_bps": list(self._delegation_bps)
         }

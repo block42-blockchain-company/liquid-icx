@@ -32,6 +32,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def Claim(self):
         pass
 
+    @eventlog(indexed=1)
+    def Debug(self, _str1: str):
+        pass
+
     # ================================================
     #  Initialization
     # ================================================
@@ -75,7 +79,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # We do not want to distribute the first < two terms, when SCORE is created
         self._last_distributed_height.set(self._system_score.getIISSInfo()["nextPRepTerm"])
 
-        self._min_value_to_get_rewards.set(10 * 10**_decimals)
+        self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
         self._distributing.set(False)
 
@@ -164,7 +168,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def newUnlockedTotal(self) -> int:
         return self._new_unlocked_total.get()
 
-
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:
         """
@@ -207,7 +210,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Only owner function at current state.")
         self._cap.set(_value * 10 ** self._decimals.get())
 
-
     @staticmethod
     def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
         """
@@ -223,9 +225,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @payable
     @external
-    def join(self) -> None:
+    def join(self, delegation: str = None) -> None:
         """
         External entry point to join the LICX pool
+        :param delegation: list of preps a user wants to vote for in string JSON format
         """
 
         if self.msg.value < self._min_value_to_get_rewards.get():
@@ -234,7 +237,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._cap.get() <= self.getStaked() + self.msg.value:
             revert("LiquidICX: Currently impossible to join the pool")
 
-        self._join(self.msg.sender, self.msg.value)
+        voting = True
+        if delegation is None:
+            delegation = json_dumps({PREP_ADDRESS: self.msg.value})
+            voting = False
+
+        self._join(self.msg.sender, self.msg.value, json_loads(delegation), voting)
 
     @external
     def leave(self, _value: int = None) -> None:
@@ -357,7 +365,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distributing.set(False)
         self.Distribute(self.block_height)
 
-    def _join(self, sender: Address, value: int) -> None:
+    def _join(self, sender: Address, value: int, delegation: dict, voting: bool) -> None:
         """
         Add a wallet to the LICX pool and issue LICX to it
         :param sender: Wallet that wants to join
@@ -369,16 +377,26 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if wallet.node_id == 0:
             node_id = self._wallets.append(str(sender))
 
-        wallet.join(value, node_id)
-
+        wallet.join(value, delegation, voting, node_id)
         self._system_score.setStake(self.getStaked() + value)
 
-        delegation_info: Delegation = {
-            "address": PREP_ADDRESS,
-            "value": self.getDelegation()["totalDelegated"] + value
-        }
+        delegations: list = []
+        for it in range(len(wallet.delegation_addr)):
+            addr = wallet.delegation_addr[it]
+            value = wallet.delegation_value[it]
+            _delegations = self.getDelegation()["delegations"]
 
-        self._system_score.setDelegation([delegation_info])
+            curr_delegation = \
+                next((i for i, obj in enumerate(_delegations) if obj.get("address") == addr), -1)
+            if curr_delegation != -1:
+                value += _delegations[curr_delegation]["addr"]
+
+            delegations.append({
+                "address": Address.from_string(addr),
+                "value": value
+            })
+
+        self._system_score.setDelegation(delegations)
         self.Join(sender, value)
 
     def _leave(self, _account: Address, _value: int):

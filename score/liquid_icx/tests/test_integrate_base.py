@@ -1,3 +1,4 @@
+import json
 import unittest
 import os
 import pprint as pp
@@ -174,10 +175,13 @@ class LICXTestBase(IconIntegrateTestBase):
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
     # -----------------------------------------------------------------------
-    def _join(self, from_: KeyWallet = None, value: int = None):
+    def _join(self, from_: KeyWallet = None, value: int = None, prep_list: dict = None):
         wallet = from_ if from_ is not None else self._wallet
         value = value if value is not None else 10
-        tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address())
+        paras = {}
+        if prep_list is not None:
+            paras = {"delegation": json.dumps(prep_list)}
+        tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address(), params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         return tx_result
 
@@ -269,7 +273,7 @@ class LICXTestBase(IconIntegrateTestBase):
 
     def _set_min_value_to_get_rewards(self, value, condition: bool = True):
         paras = {
-            "_value": value
+            "_value": values
         }
         tx = self._build_transaction(method="setMinValueToGetRewards", params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)

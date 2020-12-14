@@ -32,12 +32,12 @@ class LiquidICXTest(LICXTestBase):
         """
         # 1
         self.assertEqual(self._get_wallets(), [])
-        self._join()
-        self.assertEqual(len(self._get_wallets()), 1)
+        join_tx = self._join()
+        self.assertEqual(len(self._get_wallets()), 1, msg=pp.pformat(join_tx))
         self._n_join(10)
         self.assertEqual(len(self._get_wallets()), 11)
-        self._join()
-        self.assertEqual(len(self._get_wallets()), 11)
+        join_tx = self._join()
+        self.assertEqual(len(self._get_wallets()), 11, msg=pp.pformat(join_tx))
         # 2
         owner = self._get_wallet()
         self.assertEqual(owner["locked"], hex(2 * 10 * 10**18), msg=pp.pformat(owner))
@@ -137,6 +137,59 @@ class LiquidICXTest(LICXTestBase):
         # 4
         self._join()
         self.assertEqual(len(self._get_wallets()), 2, msg=pp.pformat(self._get_wallets()))
+
+    def test_4_join_with_custom_preps(self):
+        """
+        1. Join with 20 ICX, vote for two different preps with 10 ICX each and perform basic checks
+        2. Second join with additional 10 ICX, which are delegated to first prep in list
+        :return:
+        """
+        # 1
+        prep_list = ["hxc60380ef4c1e76595a30fa40d7b519fb3c832db0",
+                     "hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc",
+                     "hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"]
+        delegation = {
+            prep_list[0]: 6 * 10**18,
+            prep_list[1]: 6 * 10**18,
+            prep_list[2]: 6 * 10**18
+        }
+        join_tx = self._join(value=18, prep_list=delegation)
+        self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
+        self.assertEqual(len(self._get_wallets()), 1)
+        # check wallet
+        owner = self._get_wallet()
+        self.assertEqual(int(owner["delegation_values"][0], 16), 6*10**18, msg=pp.pformat(owner))
+        self.assertEqual(int(owner["delegation_values"][1], 16), 6*10**18, msg=pp.pformat(owner))
+        self.assertEqual(int(owner["delegation_values"][2], 16), 6*10**18, msg=pp.pformat(owner))
+        self.assertEqual(owner["delegation_addr"][0], prep_list[0], msg=pp.pformat(owner))
+        self.assertEqual(owner["delegation_addr"][1], prep_list[1], msg=pp.pformat(owner))
+        self.assertEqual(owner["delegation_addr"][2], prep_list[2], msg=pp.pformat(owner))
+        # check contract staking/delegating
+        self.assertEqual(self._get_staked(), hex(18 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_delegation()["totalDelegated"], hex(18 * 10 ** 18), msg=pp.pformat(owner))
+        delegations = self._get_delegation()["delegations"]
+        self.assertEqual(delegations[0]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[0]["address"], prep_list[0], msg=pp.pformat(owner))
+        self.assertEqual(delegations[1]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[1]["address"], prep_list[1], msg=pp.pformat(owner))
+        self.assertEqual(delegations[2]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[2]["address"], prep_list[2], msg=pp.pformat(owner))
+        # 2
+        delegation = {prep_list[0]: 10 * 10 ** 18}
+        join_tx = self._join(value=10, prep_list=delegation)
+        self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
+        # check contract staking/delegating
+        self.assertEqual(self._get_staked(), hex(28 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_delegation()["totalDelegated"], hex(28 * 10 ** 18), msg=pp.pformat(owner))
+        delegations = self._get_delegation()["delegations"]
+        self.assertEqual(delegations[0]["value"], hex(16 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[0]["address"], prep_list[0], msg=pp.pformat(owner))
+        self.assertEqual(delegations[1]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[1]["address"], prep_list[1], msg=pp.pformat(owner))
+        self.assertEqual(delegations[2]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[2]["address"], prep_list[2], msg=pp.pformat(owner))
+
+
 
 
 
