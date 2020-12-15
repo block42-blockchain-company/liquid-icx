@@ -237,12 +237,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._cap.get() <= self.getStaked() + self.msg.value:
             revert("LiquidICX: Currently impossible to join the pool")
 
-        voting = True
+        delegation = json_loads(delegation)
         if delegation is None:
-            delegation = json_dumps({PREP_ADDRESS: self.msg.value})
-            voting = False
+            delegation = self.getDelegation()["delegations"]
 
-        self._join(self.msg.sender, self.msg.value, json_loads(delegation), voting)
+        self._join(self.msg.sender, self.msg.value, delegation)
 
     @external
     def leave(self, _value: int = None) -> None:
@@ -338,11 +337,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distributing.set(True)
 
     def _redelegate(self):
-        """
+        """vo
         Re-stake and re-delegate with the rewards claimed at the start of the cycle.
         """
         restake_value = self.getStaked() + self._rewards.get() - self._total_unstake_in_term.get()
-        delegation: Delegation = {"address": PREP_ADDRESS, "value": restake_value}
+        delegation = {"address": PREP_ADDRESS, "value": restake_value}
         if restake_value >= self.getStaked():
             self._system_score.setStake(restake_value)
             self._system_score.setDelegation([delegation])
@@ -365,34 +364,39 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distributing.set(False)
         self.Distribute(self.block_height)
 
-    def _join(self, sender: Address, value: int, delegation: dict, voting: bool) -> None:
+    def _join(self, sender: Address, value: int, delegation: dict) -> None:
         """
         Add a wallet to the LICX pool and issue LICX to it
         :param sender: Wallet that wants to join
         :param value: Amount of ICX to join the pool
+        :param delegation:
         """
 
+        # Create wallet object and append to linked list if first time joining
         node_id = None
         wallet = Wallet(self.db, sender)
         if wallet.node_id == 0:
             node_id = self._wallets.append(str(sender))
 
-        wallet.join(value, delegation, voting, node_id)
+        current_delegations = self.getDelegation()["delegations"]
+
+        # update wallet with calling join function and stake the new amount if ICX
+        wallet.join(value, delegation, (current_delegations != delegation), node_id)
         self._system_score.setStake(self.getStaked() + value)
 
+        # prepare new (updated) delegation list
         delegations: list = []
-        for it in range(len(wallet.delegation_addr)):
-            addr = wallet.delegation_addr[it]
+        for it in range(len(wallet.delegation_address)):
+            prep_addr = wallet.delegation_address[it]
             value = wallet.delegation_value[it]
-            _delegations = self.getDelegation()["delegations"]
 
-            curr_delegation = \
-                next((i for i, obj in enumerate(_delegations) if obj.get("address") == addr), -1)
-            if curr_delegation != -1:
-                value += _delegations[curr_delegation]["addr"]
+            # get an index of prep in current_delegations, if it exists
+            index = next((i for i, obj in enumerate(current_delegations) if obj.get("address") == prep_addr), -1)
+            if index != -1:
+                value += current_delegations[index]["addr"]
 
             delegations.append({
-                "address": Address.from_string(addr),
+                "address": Address.from_string(prep_addr),
                 "value": value
             })
 

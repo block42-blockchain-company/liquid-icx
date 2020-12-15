@@ -11,7 +11,7 @@ from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 class LiquidICXTest(LICXTestBase):
 
-    LOCAL_NETWORK_TEST = False
+    LOCAL_NETWORK_TEST = True
 
     def setUp(self, **kwargs):
         super().setUp()
@@ -158,6 +158,7 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(len(self._get_wallets()), 1)
         # check wallet
         owner = self._get_wallet()
+        pp.pprint(owner)
         self.assertEqual(int(owner["delegation_values"][0], 16), 6*10**18, msg=pp.pformat(owner))
         self.assertEqual(int(owner["delegation_values"][1], 16), 6*10**18, msg=pp.pformat(owner))
         self.assertEqual(int(owner["delegation_values"][2], 16), 6*10**18, msg=pp.pformat(owner))
@@ -188,6 +189,11 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(delegations[1]["address"], prep_list[1], msg=pp.pformat(owner))
         self.assertEqual(delegations[2]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(delegations[2]["address"], prep_list[2], msg=pp.pformat(owner))
+
+
+
+        # TODO
+        # 1. Write test-case, where user does not vote at first, and then votes at next join
 
 
 
