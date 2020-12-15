@@ -266,6 +266,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             self.Claim()
 
     @external
+    def vote(self) -> None:
+        """
+        External entry point to change your current vote/delegation
+        """
+        pass
+
+    @external
     def distribute(self) -> None:
         """
         Distribute I-Score rewards once per term.
@@ -337,7 +344,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distributing.set(True)
 
     def _redelegate(self):
-        """vo
+        """
         Re-stake and re-delegate with the rewards claimed at the start of the cycle.
         """
         restake_value = self.getStaked() + self._rewards.get() - self._total_unstake_in_term.get()
@@ -379,7 +386,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             node_id = self._wallets.append(str(sender))
 
         current_delegations = self.getDelegation()["delegations"]
-
+        self.Debug(json_dumps(current_delegations))
         # update wallet with calling join function and stake the new amount if ICX
         wallet.join(value, delegation, (current_delegations != delegation), node_id)
         self._system_score.setStake(self.getStaked() + value)

@@ -18,6 +18,11 @@ from iconservice.icon_constant import GOVERNANCE_ADDRESS
 
 class LICXTestBase(IconIntegrateTestBase):
 
+    # preps on yeouido test-net
+    prep_list = ["hxc60380ef4c1e76595a30fa40d7b519fb3c832db0",
+                 "hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc",
+                 "hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"]
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
