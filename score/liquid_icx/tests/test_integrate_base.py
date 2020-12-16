@@ -187,7 +187,7 @@ class LICXTestBase(IconIntegrateTestBase):
         if prep_list is not None:
             paras = {"delegation": json.dumps(prep_list)}
         tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address(), params=paras)
-        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
         return tx_result
 
     def _distribute(self):

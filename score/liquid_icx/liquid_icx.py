@@ -32,10 +32,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def Claim(self):
         pass
 
-    @eventlog(indexed=1)
-    def Debug(self, _str1: str):
-        pass
-
     # ================================================
     #  Initialization
     # ================================================
@@ -385,29 +381,23 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if wallet.node_id == 0:
             node_id = self._wallets.append(str(sender))
 
-        current_delegations = self.getDelegation()["delegations"]
-        self.Debug(json_dumps(current_delegations))
+        old_delegations: list = self.getDelegation()["delegations"]
         # update wallet with calling join function and stake the new amount if ICX
-        wallet.join(value, delegation, (current_delegations != delegation), node_id)
+        wallet.join(value, delegation, (old_delegations != delegation), node_id)
         self._system_score.setStake(self.getStaked() + value)
 
         # prepare new (updated) delegation list
-        delegations: list = []
-        for it in range(len(wallet.delegation_address)):
-            prep_addr = wallet.delegation_address[it]
-            value = wallet.delegation_value[it]
-
-            # get an index of prep in current_delegations, if it exists
-            index = next((i for i, obj in enumerate(current_delegations) if obj.get("address") == prep_addr), -1)
+        for address, value in delegation.items():
+            index = next((i for i, obj in enumerate(old_delegations) if str(obj["address"]) == address), -1)
             if index != -1:
-                value += current_delegations[index]["addr"]
+                old_delegations[index]["value"] += value
+            else:
+                old_delegations.append({
+                    "address": Address.from_string(address),
+                    "value": value
+                })
 
-            delegations.append({
-                "address": Address.from_string(prep_addr),
-                "value": value
-            })
-
-        self._system_score.setDelegation(delegations)
+        self._system_score.setDelegation(old_delegations)
         self.Join(sender, value)
 
     def _leave(self, _account: Address, _value: int):

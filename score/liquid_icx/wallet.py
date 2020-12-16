@@ -130,6 +130,15 @@ class Wallet:
                     break
         return claim_amount
 
+    def delegations(self) -> list:
+        delegations = []
+        for it in range(len(self.delegation_address)):
+            delegations.append({
+                "address": Address.from_string(self.delegation_address[it]),
+                "value": self.delegation_value[it]
+            })
+        return delegations
+
     @property
     def locked(self) -> int:
         return self._locked.get()
