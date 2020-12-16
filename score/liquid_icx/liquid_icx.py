@@ -262,11 +262,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             self.Claim()
 
     @external
-    def vote(self) -> None:
+    def vote(self, delegation: str) -> None:
         """
         External entry point to change your current vote/delegation
         """
-        pass
+        if delegation is None:
+            revert("LiquidICX: Delegation can not be None")
+
+        self._vote(self.msg.sender, json_loads(delegation))
+
+
 
     @external
     def distribute(self) -> None:
@@ -415,6 +420,20 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         Wallet(self.db, _account).requestLeave(_value)
         self.LeaveRequest(_account, _value)
+
+    def _vote(self, sender: Address, delegation: dict):
+        if self._balances[sender] <= 0:
+            revert("LiquidICX: Out of balance.")
+
+
+        old_delegations = self.getDelegation()["delegations"]
+
+        for address, value in delegation.items():
+            pass
+
+        wallet = Wallet(self.db, sender)
+        wallet.changeDelegation()
+
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """

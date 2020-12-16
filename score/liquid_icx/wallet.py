@@ -130,6 +130,10 @@ class Wallet:
                     break
         return claim_amount
 
+    def changeDelegation(self):
+        pass
+
+    @property
     def delegations(self) -> list:
         delegations = []
         for it in range(len(self.delegation_address)):
