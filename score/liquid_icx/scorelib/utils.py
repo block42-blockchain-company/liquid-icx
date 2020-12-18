@@ -16,3 +16,13 @@ class Utils:
         # append temp back to arrayDB
         while temp:
             array.put(temp.pop())
+
+    @staticmethod
+    def calcBPS(part: int, base: int) -> int:
+        """
+        Calculating Basis Point
+        :param part:
+        :param base:
+        :return:
+        """
+        return int((part * 10000) / base)

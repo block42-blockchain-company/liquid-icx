@@ -11,7 +11,7 @@ from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 class LiquidICXTest(LICXTestBase):
 
-    LOCAL_NETWORK_TEST = True
+    LOCAL_NETWORK_TEST = False
 
     def setUp(self, **kwargs):
         super().setUp()
@@ -232,6 +232,12 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(delegations[1]["address"], self.prep_list[1], msg=pp.pformat(delegations))
         self.assertEqual(delegations[2]["value"], hex(delegation_value * 3), msg=pp.pformat(delegations))
         self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(delegations))
+        pp.pprint(delegations)
+        join_tx = self._join(value=30)
+        self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
+        pp.pprint(self._get_delegation()["delegations"])
+
+
 
 
 

@@ -18,7 +18,7 @@ class Wallet:
         self._unstake_heights = ArrayDB("unstake_heights" + str(_address), db, value_type=int)
 
         # Wallet ID in linked list
-        self._node_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
+        self._wallet_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
 
         # Tracking individual wallet's delegations
         # self._voting = VarDB("voting_" + str(_address), db, value_type=int)
@@ -26,20 +26,16 @@ class Wallet:
         self._delegation_value = ArrayDB("delegation_value_" + str(_address), db, value_type=int)
         # self._delegation_bps = ArrayDB("delegation_bps_" + str(_address), db, value_type=int)
 
-    def join(self, join_amount: int, delegation: dict, voting: bool, node_id: int = None):
+    def join(self, join_amount: int, delegation: dict):
         """
         Adds new values to the wallet's join queues
         :param voting:
         :param delegation:
-        :param node_id: Id in wallet linked list
         :param join_amount: amount of ICX that a wallet sent
         """
 
         if len(self._join_values) >= 10:
             revert("LiquidICX: Wallet tries to join more than 10 times in 2 terms. This is considered as spam")
-
-        if self.node_id == 0:
-            self._node_id.set(node_id)
 
         iiss_info = self.__sys_score.getIISSInfo()
 
@@ -47,19 +43,19 @@ class Wallet:
         self._unlock_heights.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
         self.locked = self.locked + join_amount
 
-        if voting:
-            delegation_amount_sum = 0
-            for addr, value in delegation.items():
-                if addr not in self._delegation_address:
-                    self._delegation_address.put(addr)
-                    self._delegation_value.put(value)
-                else:
-                    index = list(self._delegation_address).index(addr)
-                    self._delegation_value[index] += value
-                delegation_amount_sum += value
+        delegation_amount_sum = 0
+        for addr, value in delegation.items():
+            if addr not in self._delegation_address:
+                self._delegation_address.put(addr)
+                self._delegation_value.put(value)
+            else:
+                index = list(self._delegation_address).index(addr)
+                self._delegation_value[index] += value
+            delegation_amount_sum += value
 
-            if delegation_amount_sum != join_amount:
-                revert(f"LiquidICX: Delegations values do not match to the amount of ICX sent. {delegation_amount_sum} : {join_amount}")
+        Logger.info(f"Total delegation {delegation_amount_sum} : Join amount {join_amount}")
+        if delegation_amount_sum != join_amount:
+            revert(f"LiquidICX: Delegations values do not match to the amount of ICX sent. {delegation_amount_sum} : {join_amount}")
 
     def requestLeave(self, _leave_amount):
         """
@@ -177,11 +173,13 @@ class Wallet:
 
     @property
     def node_id(self):
-        return self._node_id.get()
+        return self._wallet_id.get()
 
     @node_id.setter
     def node_id(self, value):
-        self._node_id.set(value)
+        if self.node_id != 0:
+            revert("LiquidICX: The node id was already set.")
+        self._wallet_id.set(value)
 
     # @property
     # def voting(self):
