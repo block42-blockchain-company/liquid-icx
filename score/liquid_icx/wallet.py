@@ -29,9 +29,8 @@ class Wallet:
     def join(self, join_amount: int, delegation: dict):
         """
         Adds new values to the wallet's join queues
-        :param voting:
-        :param delegation:
         :param join_amount: amount of ICX that a wallet sent
+        :param delegation:
         """
 
         if len(self._join_values) >= 10:
@@ -53,7 +52,6 @@ class Wallet:
                 self._delegation_value[index] += value
             delegation_amount_sum += value
 
-        Logger.info(f"Total delegation {delegation_amount_sum} : Join amount {join_amount}")
         if delegation_amount_sum != join_amount:
             revert(f"LiquidICX: Delegations values do not match to the amount of ICX sent. {delegation_amount_sum} : {join_amount}")
 

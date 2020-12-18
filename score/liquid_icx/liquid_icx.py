@@ -368,10 +368,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     def _join(self, sender: Address, amount: int, delegation: dict) -> None:
         """
-        Add a wallet to the LICX pool and issue LICX to it
+        Add a wallet to the LICX pool and issue LICX to it.
+        If user passes delegation to entry point function, it will delegate to this specific preps,
+        otherwise it will distribute the voting power within the preps that SCORE is delegating.
         :param sender: Wallet that wants to join
-        :param value: Amount of ICX to join the pool
-        :param delegation:
+        :param amount: Amount of ICX to join the pool
+        :param delegation: preps, that user wants delegate to ( key -> prep_address, value -> delegation amount)
         """
 
         # Create wallet object and append to linked list if first time joining
@@ -379,8 +381,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if wallet.node_id == 0:
             wallet.node_id = self._wallets.append(str(sender))
 
-        delegations: list = self.getDelegation()["delegations"]
         # prepare new (updated) delegation list
+        delegations: list = self.getDelegation()["delegations"]
         if delegation is None:
             delegation = {}
             total_delegated = self.getDelegation()["totalDelegated"]
@@ -390,8 +392,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 delegation[str(it["address"])] = delegation_value
                 it["value"] += delegation_value
         else:
-
+            prep_list: list = self._system_score.getMainPReps()["preps"]
+            prep_list.extend(self._system_score.getSubPReps()["preps"])
             for address, value in delegation.items():
+                if not any(str(prep['address']) == address for prep in prep_list):
+                    revert("LiquidICX: Given address is not a P-Rep.")
                 index = next((i for i, obj in enumerate(delegations) if str(obj["address"]) == address), -1)
                 if index != -1:
                     delegations[index]["value"] += value
@@ -426,15 +431,20 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._balances[sender] <= 0:
             revert("LiquidICX: Out of balance.")
 
-
         old_delegations = self.getDelegation()["delegations"]
-
+        # prepare new (updated) delegation list
         for address, value in delegation.items():
-            pass
+            index = next((i for i, obj in enumerate(old_delegations) if str(obj["address"]) == address), -1)
+            if index != -1:
+                old_delegations[index]["value"] += value
+            else:
+                old_delegations.append({
+                    "address": Address.from_string(address),
+                    "value": value
+                })
 
         wallet = Wallet(self.db, sender)
         wallet.changeDelegation()
-
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """

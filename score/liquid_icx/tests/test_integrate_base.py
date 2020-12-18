@@ -19,9 +19,16 @@ from iconservice.icon_constant import GOVERNANCE_ADDRESS
 class LICXTestBase(IconIntegrateTestBase):
 
     # preps on yeouido test-net
-    prep_list = ["hxc60380ef4c1e76595a30fa40d7b519fb3c832db0",
-                 "hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc",
-                 "hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"]
+    PREP_LIST_YEOUIDO = ["hxc60380ef4c1e76595a30fa40d7b519fb3c832db0",
+                         "hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc",
+                         "hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"]
+
+    PREP_LIST_LOCAL = ["hx000e0415037ae871184b2c7154e5924ef2bc075e",
+                       "hx9eec61296a7010c867ce24c20e69588e2832bc52",
+                       "hx2fb8fb849cba40bf59a48ebcef899d6ae45382f4",
+                       "hx0d091baf34fb2b8e144f3e878dc73c35e77f912f"]
+
+    prep_list: list = None
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -33,11 +40,13 @@ class LICXTestBase(IconIntegrateTestBase):
             cls._icon_service = IconService(HTTPProvider("https://bicon.net.solidwallet.io/api/v3"))
             cls._score_address = str()
             cls._fake_sys_score = str()
+            cls.prep_list = cls.PREP_LIST_YEOUIDO
         else:
             cls._wallet = cls._test1
             cls._wallet2 = KeyWallet.create()
             cls._icon_service = IconService(HTTPProvider("http://127.0.0.1:9000/api/v3"))
             cls._score_address = str()
+            cls.prep_list = cls.PREP_LIST_LOCAL
 
     def setUp(self) -> None:
         super().setUp()
@@ -278,7 +287,7 @@ class LICXTestBase(IconIntegrateTestBase):
 
     def _set_min_value_to_get_rewards(self, value, condition: bool = True):
         paras = {
-            "_value": values
+            "_value": value
         }
         tx = self._build_transaction(method="setMinValueToGetRewards", params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
