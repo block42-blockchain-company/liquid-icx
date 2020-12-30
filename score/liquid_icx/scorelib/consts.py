@@ -33,4 +33,11 @@ UNSTAKING_MARGIN = 300
 FAKE_SYSTEM_CONTRACT_LOCAL = Address.from_string('cx7c0f2d7d4253a230177bf95b897e0321ac5e43d1')
 FAKE_SYSTEM_CONTRACT_YEOUIDO = Address.from_string('cx2b01010a92bf78ee464be0b5eff94676e95cd757')
 
-PREP_ADDRESS = Address.from_string("hx168d2cfe6d73acb8cb690d3abda54d3af266addf")  # block42
+
+# ------------ MAIN NET -------------
+# PREP_ADDRESS = Address.from_string("hx168d2cfe6d73acb8cb690d3abda54d3af266addf")  # block42
+
+# ------------ BICON NET -------------
+PREP_ADDRESS = Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f")
+PREP_ADDRESS1 = Address.from_string("hxc60380ef4c1e76595a30fa40d7b519fb3c832db0")
+PREP_ADDRESS2 = Address.from_string("hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc")

@@ -11,7 +11,7 @@ from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 class LiquidICXTest(LICXTestBase):
 
-    LOCAL_NETWORK_TEST = False
+    LOCAL_NETWORK_TEST = True
 
     def setUp(self, **kwargs):
         super().setUp()
@@ -223,7 +223,7 @@ class LiquidICXTest(LICXTestBase):
         }
         join_tx = self._join(self._wallet2, value=80, prep_list=delegation)
         self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
-        # check staked and delgations
+        # check staked and delegations
         self.assertEqual(self._get_staked(), hex(delegation_value * 10), msg=pp.pformat(self._get_staked()))
         delegations = self._get_delegation()["delegations"]
         self.assertEqual(delegations[0]["value"], hex(delegation_value * 2), msg=pp.pformat(delegations))

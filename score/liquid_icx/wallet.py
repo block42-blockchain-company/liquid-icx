@@ -124,6 +124,23 @@ class Wallet:
                     break
         return claim_amount
 
+    def calcDistributeDelegations(self, reward) -> dict:
+        delegation = self.__sys_score.getDelegation()
+        reward_delegations = dict()
+        for deleg in delegation["delegations"]:
+            address = deleg["address"]
+            basis_point = Utils.calcBPS(deleg["value"], delegation["totalDelegated"])
+            delegation_value = int((reward * basis_point) / 10000)
+            reward_delegations[address] = delegation_value
+            if str(address) not in self._delegation_address:
+                self._delegation_address.put(str(address))
+                self._delegation_value.put(delegation_value)
+            else:
+                index = list(self._delegation_address).index(str(address))
+                self._delegation_value[index] += reward_delegations
+
+        return reward_delegations
+
     def changeDelegation(self):
         pass
 

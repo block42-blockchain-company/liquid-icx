@@ -288,6 +288,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 self._claimRewards()
                 self._distribute_it.set(self._wallets.get_head_node().id)  # get head id for start iteration
 
+            reward_delegations = dict()
             curr_id = self._distribute_it.get()
             for it in range(self._iteration_limit.get()):
                 try:
@@ -299,6 +300,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     if wallet_balance >= self._min_value_to_get_rewards.get() and self._total_supply.get():
                         wallet_rewards = int(wallet_balance / self._total_supply.get() * self._rewards.get())
 
+                    reward_delegations.update(wallet.calcDistributeDelegations(wallet_rewards))
                     wallet_unlocked = wallet.unlock()
                     wallet_leave = wallet.leave()
 
