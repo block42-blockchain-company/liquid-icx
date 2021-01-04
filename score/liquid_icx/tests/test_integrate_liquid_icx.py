@@ -11,7 +11,7 @@ from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 class LiquidICXTest(LICXTestBase):
 
-    LOCAL_NETWORK_TEST = False
+    LOCAL_NETWORK_TEST = True
 
     def setUp(self, **kwargs):
         super().setUp()

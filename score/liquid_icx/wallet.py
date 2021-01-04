@@ -6,8 +6,8 @@ class Wallet:
     __sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
     def __init__(self, db: IconScoreDatabase, _address: Address):
-        self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
-        self._unstaking = VarDB("unstaking_" + _address.__str__(), db, value_type=int)
+        self._locked = VarDB("locked_" + str(_address), db, value_type=int)
+        self._unstaking = VarDB("unstaking_" + str(_address), db, value_type=int)
 
         # Presents how much user deposited to SCORE in chronological order
         self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
@@ -20,7 +20,7 @@ class Wallet:
         # Wallet ID in linked list
         self._node_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
 
-    def join(self, join_amount: int, node_id: int = None):
+    def join(self, join_amount: int):
         """
         Adds new values to the wallet's join queues
         :param node_id: Id in wallet linked list
@@ -29,9 +29,6 @@ class Wallet:
 
         if len(self._join_values) >= 10:
             revert("LiquidICX: Wallet tries to join more than 10 times in 2 terms. This is considered as spam")
-
-        if self.node_id == 0:
-            self._node_id.set(node_id)
 
         iiss_info = self.__sys_score.getIISSInfo()
 
@@ -107,6 +104,9 @@ class Wallet:
                 else:
                     break
         return claim_amount
+
+    def exists(self):
+        return self.node_id > 0
 
     @property
     def locked(self) -> int:
