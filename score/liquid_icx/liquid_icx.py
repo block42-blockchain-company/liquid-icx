@@ -348,7 +348,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
 
         wallet = Wallet(self.db, sender)
-        if wallet.exists():
+        if not wallet.exists():
             wallet.node_id = self._wallets.append(str(sender))
 
         wallet.join(value)
