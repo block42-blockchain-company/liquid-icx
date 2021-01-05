@@ -348,7 +348,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
 
         wallet = Wallet(self.db, sender)
-        if wallet.node_id == 0:
+        if wallet.exists():
             wallet.node_id = self._wallets.append(str(sender))
 
         wallet.join(value)
@@ -426,3 +426,4 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Called when anyone sends ICX to the SCORE.
         """
         revert('LiquidICX: LICX does not accept ICX. If you want to enter the pool, you need to call "join" method.')
+
