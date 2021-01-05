@@ -387,12 +387,19 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         delegations: list = self.getDelegation()["delegations"]
         if delegation is None:
             delegation = {}
-            total_delegated = self.getDelegation()["totalDelegated"]
-            for it in delegations:
-                basis_point = Utils.calcBPS(it["value"], total_delegated)
-                delegation_value = int((amount * basis_point) / 10000)
-                delegation[str(it["address"])] = delegation_value
-                it["value"] += delegation_value
+            if len(delegations) != 0:
+                total_delegated = self.getDelegation()["totalDelegated"]
+                for it in delegations:
+                    basis_point = Utils.calcBPS(it["value"], total_delegated)
+                    delegation_value = int((amount * basis_point) / 10000)
+                    delegation[str(it["address"])] = delegation_value
+                    it["value"] += delegation_value
+            else:
+                delegation[str(PREP_ADDRESS)] = amount
+                delegations.append({
+                    "address": PREP_ADDRESS,
+                    "value": amount
+                })
         else:
             prep_list: list = self._system_score.getMainPReps()["preps"]
             prep_list.extend(self._system_score.getSubPReps()["preps"])
