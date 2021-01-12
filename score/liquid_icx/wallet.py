@@ -53,7 +53,8 @@ class Wallet:
             delegation_amount_sum += value
 
         if delegation_amount_sum != join_amount:
-            revert(f"LiquidICX: Delegations values do not match to the amount of ICX sent. {delegation_amount_sum} : {join_amount}")
+            revert(
+                f"LiquidICX: Delegations values do not match to the amount of ICX sent. {delegation_amount_sum} : {join_amount}")
 
     def requestLeave(self, _leave_amount):
         """
@@ -124,21 +125,21 @@ class Wallet:
                     break
         return claim_amount
 
-    def calcDistributeDelegations(self, reward) -> dict:
-        delegation = self.__sys_score.getDelegation()
+    def calcDistributeDelegations(self, reward: int, delegation: dict) -> dict:
+        Logger.info(f"Reward: {reward}, Delegation: {delegation}")
         reward_delegations = dict()
         for deleg in delegation["delegations"]:
-            address = deleg["address"]
+            prep_address: Address = deleg["address"]
             basis_point = Utils.calcBPS(deleg["value"], delegation["totalDelegated"])
             delegation_value = int((reward * basis_point) / 10000)
-            reward_delegations[address] = delegation_value
-            if str(address) not in self._delegation_address:
-                self._delegation_address.put(str(address))
+            reward_delegations[prep_address] = delegation_value
+            Logger.info(f"Basis_point: {basis_point}, delegation_value:{delegation_value}, \n, {reward_delegations}")
+            if str(prep_address) not in self._delegation_address:
+                self._delegation_address.put(str(prep_address))
                 self._delegation_value.put(delegation_value)
             else:
-                index = list(self._delegation_address).index(str(address))
-                self._delegation_value[index] += reward_delegations
-
+                index = list(self._delegation_address).index(str(prep_address))
+                self._delegation_value[index] += delegation_value
         return reward_delegations
 
     def changeDelegation(self):

@@ -287,6 +287,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             if not self._rewards.get():
                 self._claimRewards()
                 self._distribute_it.set(self._wallets.get_head_node().id)  # get head id for start iteration
+                Logger.info(f"Rewards: {self._rewards.get()}")
 
             reward_delegations = dict()
             curr_id = self._distribute_it.get()
@@ -299,8 +300,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     wallet_balance = self._balances[curr_address]
                     if wallet_balance >= self._min_value_to_get_rewards.get() and self._total_supply.get():
                         wallet_rewards = int(wallet_balance / self._total_supply.get() * self._rewards.get())
+                        reward_delegations.update(wallet.calcDistributeDelegations(wallet_rewards,
+                                                                                   self.getDelegation()))
 
-                    reward_delegations.update(wallet.calcDistributeDelegations(wallet_rewards))
                     wallet_unlocked = wallet.unlock()
                     wallet_leave = wallet.leave()
 
@@ -321,7 +323,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                         curr_id = self._wallets.next(curr_id)
 
                 except StopIteration:
-                    self._redelegate()
+                    self._redelegate(reward_delegations)
                     self._endDistribution()
                     return
 
@@ -340,17 +342,25 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._system_score.claimIScore()
         self._distributing.set(True)
 
-    def _redelegate(self):
+    # def _redelegate(self):
+    def _redelegate(self, reward_delegations: dict):
         """
         Re-stake and re-delegate with the rewards claimed at the start of the cycle.
         """
+        Logger.info(f"Rewards delegations: {reward_delegations}")
         restake_value = self.getStaked() + self._rewards.get() - self._total_unstake_in_term.get()
-        delegation = {"address": PREP_ADDRESS, "value": restake_value}
+        delegation = self.getDelegation()["delegations"]
+
+        for deleg in delegation:
+            prep_address = deleg["address"]
+            if prep_address in reward_delegations:
+                deleg["value"] += reward_delegations[prep_address]
+
         if restake_value >= self.getStaked():
             self._system_score.setStake(restake_value)
-            self._system_score.setDelegation([delegation])
+            self._system_score.setDelegation(delegation)
         else:
-            self._system_score.setDelegation([delegation])
+            self._system_score.setDelegation(delegation)
             self._system_score.setStake(restake_value)
 
     def _endDistribution(self):

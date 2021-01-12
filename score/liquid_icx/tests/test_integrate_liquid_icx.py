@@ -1,8 +1,11 @@
 import os
 import pprint as pp
 import fileinput
+import time
+from asyncio import sleep
 
 from iconsdk.signed_transaction import SignedTransaction
+from iconservice.icon_constant import GOVERNANCE_ADDRESS
 from tbears.libs.icon_integrate_test import SCORE_INSTALL_ADDRESS
 
 from score.join_score.tests.deploy import deployJoinScore
@@ -10,13 +13,22 @@ from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 
 class LiquidICXTest(LICXTestBase):
-
     LOCAL_NETWORK_TEST = True
+    TERM_LENGTH = 43120
 
     def setUp(self, **kwargs):
         super().setUp()
         self._score_address = self._deploy_score()["scoreAddress"]
         print(f"New SCORE address: {self._score_address}")
+        if self.LOCAL_NETWORK_TEST:
+            self.TERM_LENGTH = 30
+            self.replace_in_consts_py("TERM_LENGTH", "43120", "30")
+
+    def tearDown(self):
+        super().tearDown()
+        if self.LOCAL_NETWORK_TEST:
+            self.TERM_LENGTH = 43120
+            self.replace_in_consts_py("TERM_LENGTH", "30", "43120")
 
     def test_score_update(self):
         # update SCORE
@@ -40,13 +52,12 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(len(self._get_wallets()), 11, msg=pp.pformat(join_tx))
         # 2
         owner = self._get_wallet()
-        self.assertEqual(owner["locked"], hex(2 * 10 * 10**18), msg=pp.pformat(owner))
+        self.assertEqual(owner["locked"], hex(2 * 10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
         self.assertEqual(len(owner["unlock_heights"]), 2, msg=pp.pformat(owner))
-        self.assertEqual(len(owner["join_values"]), 2, msg=pp.pformat(owner))
         # 3
-        self.assertEqual(self._get_staked(), hex(12 * 10 * 10**18), msg=pp.pformat(owner))
-        self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10**18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_staked(), hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_delegation()["totalDelegated"], hex(12 * 10 * 10 ** 18), msg=pp.pformat(owner))
         # 4
         fallback_tx = self._transfer_icx_from_to(self._wallet, self._score_address, value=5, condition=False)
         self.assertIn("LICX does not accept ICX", fallback_tx["failure"]["message"])
@@ -79,7 +90,7 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(leave_tx["failure"]["message"], "LiquidICX: Out of balance.", msg=pp.pformat(leave_tx))
         # 5
         owner = self._get_wallet()
-        self.assertEqual(owner["locked"], hex(12 * 10**18), msg=pp.pformat(owner))
+        self.assertEqual(owner["locked"], hex(12 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(owner["unstaking"], hex(0), msg=pp.pformat(owner))
 
     def test_2_join_cap(self):
@@ -96,7 +107,8 @@ class LiquidICXTest(LICXTestBase):
         while True:
             join_tx = self._join(value=30)
             if not join_tx["status"]:
-                self.assertIn("Currently impossible to join the pool", join_tx["failure"]["message"], msg=pp.pformat(join_tx))
+                self.assertIn("Currently impossible to join the pool", join_tx["failure"]["message"],
+                              msg=pp.pformat(join_tx))
                 break
         # 3
         self._set_cap(200)
@@ -104,7 +116,8 @@ class LiquidICXTest(LICXTestBase):
         while True:
             join_tx = self._join(value=30)
             if not join_tx["status"]:
-                self.assertIn("Currently impossible to join the pool", join_tx["failure"]["message"], msg=pp.pformat(join_tx))
+                self.assertIn("Currently impossible to join the pool", join_tx["failure"]["message"],
+                              msg=pp.pformat(join_tx))
                 break
         # 4
         self.assertEqual(1, len(self._get_wallets()))
@@ -130,7 +143,7 @@ class LiquidICXTest(LICXTestBase):
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertEqual(tx_result["status"], True, msg=pp.pformat(tx_result))
         # 3
-        tx = self._build_transaction(to=test_join_score_address, value=10 * 10**18, method="joinLICX")
+        tx = self._build_transaction(to=test_join_score_address, value=10 * 10 ** 18, method="joinLICX")
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertEqual(tx_result["status"], True, msg=pp.pformat(tx_result))
         self.assertTrue(test_join_score_address in self._get_wallets())
@@ -147,8 +160,8 @@ class LiquidICXTest(LICXTestBase):
         # 1
         delegation = {
             # self.prep_list[0]: 6 * 10**18,
-            self.prep_list[1]: 6 * 10**18,
-            self.prep_list[2]: 6 * 10**18
+            self.prep_list[1]: 6 * 10 ** 18,
+            self.prep_list[2]: 6 * 10 ** 18
         }
         join_tx = self._join(value=12, prep_list=delegation)
         pp.pprint(join_tx)
@@ -187,60 +200,119 @@ class LiquidICXTest(LICXTestBase):
         # self.assertEqual(delegations[1]["address"], self.prep_list[1], msg=pp.pformat(owner))
         # self.assertEqual(delegations[2]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
         # self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(owner))
-
-
-
-        # 1. Write test-case, where user does not vote at first, and then votes at next join
+        #
 
     def test_5(self):
         """
-
+        0. Wait till next term starts
+        1a. Delegate to a prep, which should fail, because the joining and total delegation amount don't match
+        1b. Delegate with same paramaters, but correct joining amount
+        2. Transfer ICX to a second wallet and delegate 10 ICX to the same prep as first wallet
+        3. Prepare delegation dictionary and delegate to the 2 new preps
+        4. Perform checks
+        5. Wait till the unlock heights to unlock the LICX. Distribute and perform checks
         """
-        # 1
-        delegation_value = 10 * 10**18
+        # 0
+        while self._icon_service.get_block("latest")["height"] <= self._getTermStart():
+            time.sleep(1)
+        print("-----Starting test-case------")
+        # 1a
+        delegation_value = 10 * 10 ** 18
         delegation = {
             self.prep_list[0]: delegation_value,
         }
-        # Fails
         join_tx = self._join(value=18, prep_list=delegation)
         self.assertFalse(join_tx["status"], msg=pp.pformat(join_tx))
         self.assertIn("Delegations values do not match", join_tx["failure"]["message"], msg=pp.pformat(join_tx))
-        # delegate 10 ucx to prep0
+        # 1b
         join_tx = self._join(value=10, prep_list=delegation)
         self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
         # 2
-        # transfer icx
         transfer_tx = self._transfer_icx_from_to(self._wallet, self._wallet2, 100)
         self.assertTrue(join_tx["status"], msg=pp.pformat(transfer_tx))
-        # delegate to 10icx prep0
         delegation = {self.prep_list[0]: delegation_value}
         join_tx = self._join(self._wallet2, value=10, prep_list=delegation)
         self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
-        # delegate to prep 1, 2
+        # 3
         delegation = {
             self.prep_list[1]: delegation_value * 5,
             self.prep_list[2]: delegation_value * 3
         }
         join_tx = self._join(self._wallet2, value=80, prep_list=delegation)
         self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
-        # check staked and delegations
+        # 4
         self.assertEqual(self._get_staked(), hex(delegation_value * 10), msg=pp.pformat(self._get_staked()))
         delegations = self._get_delegation()["delegations"]
-        self.assertEqual(delegations[0]["value"], hex(delegation_value * 2), msg=pp.pformat(delegations))
+        self.assertEqual(int(delegations[0]["value"], 16), delegation_value * 2, msg=pp.pformat(delegations))
         self.assertEqual(delegations[0]["address"], self.prep_list[0], msg=pp.pformat(delegations))
-        self.assertEqual(delegations[1]["value"], hex(delegation_value * 5), msg=pp.pformat(delegations))
+        self.assertEqual(int(delegations[1]["value"], 16), delegation_value * 5, msg=pp.pformat(delegations))
         self.assertEqual(delegations[1]["address"], self.prep_list[1], msg=pp.pformat(delegations))
-        self.assertEqual(delegations[2]["value"], hex(delegation_value * 3), msg=pp.pformat(delegations))
+        self.assertEqual(int(delegations[2]["value"], 16), delegation_value * 3, msg=pp.pformat(delegations))
         self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(delegations))
+        # 5
+        owner = self._get_wallet()
+        print(int(owner["unlock_heights"][-1], 16))
+        pp.pprint(f"Term_start: {self._getTermStart()}, Next term start {self._getNextTermStart()}")
+        while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
+            reward_icx = int(self._queryIScore()["estimatedICX"], 16)
+            pp.pprint(f"Reward: {reward_icx}, Height: {self._icon_service.get_block('latest')['height']}")
+            time.sleep(1)
+        reward_icx = int(self._queryIScore()["estimatedICX"], 16)
+        pp.pprint(reward_icx)
+        tx_distribute = self._distribute()
+        self.assertEqual(tx_distribute["status"], 1, msg=pp.pformat(tx_distribute))
+        owner = self._get_wallet()
+        self.assertEqual(owner["locked"], hex(0), msg=pp.pformat(owner))
+        self.assertEqual(len(owner["join_values"]), 0, msg=pp.pformat(owner))
+        self.assertEqual(len(owner["unlock_heights"]), 0, msg=pp.pformat(owner))
+        delegations = self._get_delegation()["delegations"]
         pp.pprint(delegations)
-        join_tx = self._join(value=30)
-        self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
-        pp.pprint(self._get_delegation()["delegations"])
+        self.assertEqual(int((delegation_value * 2) + reward_icx * 0.2), int(delegations[0]["value"], 16),
+                         msg=pp.pformat(delegations))
+        self.assertEqual(delegations[0]["address"], self.prep_list[0], msg=pp.pformat(delegations))
+        self.assertEqual(int((delegation_value * 5) + reward_icx * 0.5), int(delegations[1]["value"], 16),
+                         msg=pp.pformat(delegations))
+        self.assertEqual(delegations[1]["address"], self.prep_list[1], msg=pp.pformat(delegations))
+        self.assertEqual(int((delegation_value * 3) + reward_icx * 0.3), int(delegations[2]["value"], 16),
+                         msg=pp.pformat(delegations))
+        self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(delegations))
+
+    def test_6(self):
+        """
+        cx72cf3a2928b11f5c42125f79f68caa02df15eb16
+
+        [{'address': 'hx000e0415037ae871184b2c7154e5924ef2bc075e',
+          'value': '0x1158e460913d00000'},
+         {'address': 'hx9eec61296a7010c867ce24c20e69588e2832bc52',
+          'value': '0x2b5e3af16b1880000'},
+         {'address': 'hx2fb8fb849cba40bf59a48ebcef899d6ae45382f4',
+          'value': '0x1a055690d9db80000'}]
+        """
+        # self._score_address = "cx72cf3a2928b11f5c42125f79f68caa02df15eb16"
+        # tx_distribute = self._distribute()
+        # self.assertEqual(tx_distribute["status"], 1, msg=pp.pformat(tx_distribute))
+        # height = self._icon_service.get_block("latest")
+        # pp.pprint(height)
+        # pp.pprint(self._getTermStart())
+        # pp.pprint(self._getNextTermStart())
+        # print("-----------")
+        # pp.pprint(self._get_delegation())
+        # pp.pprint(int(self._get_staked(), 16))
+        # pp.pprint(self._queryIScore())
+
+        # join_tx = self._join(value=999)
+        # self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
+        # owner = self._get_wallet()
+        # print(("unlocked:", int(owner["unlock_heights"][0], 16)))
+        # while (True):
+        #     height = self._icon_service.get_block("latest")
+        #     pp.pprint(f"Heeight: {height['height']}, Term_start: {self._getTermStart()}, Next term start {self._getNextTermStart()}")
+        #     pp.pprint(self._queryIScore())
+        #     time.sleep(2)
 
 
-
-
-
-
-
-
+"""
+{'blockHeight': '0x1ca4',
+ 'estimatedICX': '0x522f76e60c0b',
+ 'iscore': '0x1410968729f0b29'}
+"""

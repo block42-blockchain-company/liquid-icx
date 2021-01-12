@@ -39,12 +39,12 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         self._fake_sys_score = self._deployFakeSystemSCORE()["scoreAddress"]
         print(f"New FAKE SYS SCORE address: {self._fake_sys_score}")
 
-        self.replace_in_consts_py(SCORE_INSTALL_ADDRESS, self._fake_sys_score)
+        self.replace_in_consts_py("SYSTEM_SCORE", SCORE_INSTALL_ADDRESS, self._fake_sys_score)
         self._score_address = self._deploy_score()["scoreAddress"]
         print(f"New SCORE address: {self._score_address}")
 
     def tearDown(self):
-        self.replace_in_consts_py(self._fake_sys_score, SCORE_INSTALL_ADDRESS)
+        self.replace_in_consts_py("SYSTEM_SCORE", self._fake_sys_score, SCORE_INSTALL_ADDRESS)
 
     # -----------------------------------------------------------------------
     # ----------------------- testing helper methods ------------------------
@@ -68,13 +68,6 @@ class LiquidICXWithFakeSysSCORETest(LICXTestBase):
         tx_result = self.process_transaction(SignedTransaction(transaction, self._wallet), self._icon_service)
         self.assertTrue(tx_result["status"])
         return tx_result
-
-    @classmethod
-    def replace_in_consts_py(cls, pattern: str, sub: str):
-        for line in fileinput.input("../scorelib/consts.py", inplace=1):
-            if "SYSTEM_SCORE" in line:
-                line = line.replace(pattern, sub)
-            print(line, end='')
 
     def _estimateUnstakeLockPeriod(self) -> dict:
         tx = self._build_transaction(to=self._fake_sys_score, type_="read", method="estimateUnstakeLockPeriod")

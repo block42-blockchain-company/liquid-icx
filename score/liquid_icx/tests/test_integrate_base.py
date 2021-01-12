@@ -1,3 +1,4 @@
+import fileinput
 import json
 import unittest
 import os
@@ -17,7 +18,6 @@ from iconservice.icon_constant import GOVERNANCE_ADDRESS
 
 
 class LICXTestBase(IconIntegrateTestBase):
-
     # preps on yeouido test-net
     PREP_LIST_YEOUIDO = ["hxc60380ef4c1e76595a30fa40d7b519fb3c832db0",
                          "hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc",
@@ -51,6 +51,15 @@ class LICXTestBase(IconIntegrateTestBase):
     def setUp(self) -> None:
         super().setUp()
         self._block_confirm_interval = 2 if self.LOCAL_NETWORK_TEST else 5
+        self.replace_in_consts_py("TERM_LENGTH", "43120", "30")
+
+
+    @classmethod
+    def replace_in_consts_py(cls, _line: str, pattern: str, sub: str):
+        for line in fileinput.input("../scorelib/consts.py", inplace=1):
+            if _line in line:
+                line = line.replace(pattern, sub)
+            print(line, end='')
 
     # -----------------------------------------------------------------------
     # ----------------------- testing helper methods ------------------------
@@ -137,6 +146,21 @@ class LICXTestBase(IconIntegrateTestBase):
         result = self._icon_service.call(tx)
         return int(result["contractCall"], 16) + margin
 
+    def _queryIScore(self, address: str = None):
+        if address is None:
+            address = self._score_address
+        paras = {"address": address}
+        call = self._build_transaction(to=SCORE_INSTALL_ADDRESS, type_="read", method="queryIScore", params=paras)
+        return self.process_call(call, self._icon_service)
+
+    def _getTermStart(self):
+        call = self._build_transaction(to=SCORE_INSTALL_ADDRESS, type_="read", method="getPRepTerm")
+        return int(self.process_call(call, self._icon_service)["startBlockHeight"], 16)
+
+    def _getNextTermStart(self):
+        tx = self._build_transaction(to=SCORE_INSTALL_ADDRESS, type_="read", method="getIISSInfo")
+        return int(self.process_call(tx, self._icon_service)["nextPRepTerm"], 16)
+
     def _transfer_icx_from_to(self, from_: KeyWallet, to: any, value: int, condition: bool = True):
         to = to if isinstance(to, str) else to.get_address()
         tx = self._build_transaction(type_="transfer",
@@ -183,8 +207,8 @@ class LICXTestBase(IconIntegrateTestBase):
     def _n_transfer_icx(self, wallet_list: list, to: KeyWallet = None, workers: int = 10):
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for wallet in wallet_list:
-                _from : KeyWallet = wallet.result()
-                pool.submit(self._transfer_icx_from_to,_from, to, self._icon_service.get_balance(_from.get_address()))
+                _from: KeyWallet = wallet.result()
+                pool.submit(self._transfer_icx_from_to, _from, to, self._icon_service.get_balance(_from.get_address()))
 
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
@@ -265,7 +289,6 @@ class LICXTestBase(IconIntegrateTestBase):
     def _get_rewards(self):
         tx = self._build_transaction(method="rewards", type_="read")
         return self.process_call(tx, self._icon_service)
-
 
     def _set_iteration_limit(self, limit: int = 500):
         paras = {
