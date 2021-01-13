@@ -61,7 +61,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._cap = VarDB("cap", db, int)
 
-        self._delegations = IterableDictDB("delegations", db, Address, int)
+        # self._delegations = IterableDictDB("delegations", db, Address, int)
+        self._delegation = DictDB("delegation", db, int)
+        self._delegation_keys = ArrayDB("delegation_keys", db, Address)
 
         # System SCORE
         self._system_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
@@ -212,7 +214,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @staticmethod
     def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
         """
-
         :param db: SCORE's db instance
         :param item:
         :param kwargs:
@@ -292,7 +293,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 self._distribute_it.set(self._wallets.get_head_node().id)  # get head id for start iteration
                 # Logger.info(f"Rewards: {self._rewards.get()}")
 
-            reward_delegations = dict()
             curr_id = self._distribute_it.get()
             for it in range(self._iteration_limit.get()):
                 try:
@@ -303,7 +303,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     wallet_balance = self._balances[curr_address]
                     if wallet_balance >= self._min_value_to_get_rewards.get() and self._total_supply.get():
                         wallet_rewards = int(wallet_balance / self._total_supply.get() * self._rewards.get())
-                        reward_delegations.update(wallet.calcDistributeDelegations(wallet_rewards, wallet_balance))
+                        wallet.calcDistributeDelegations(wallet_rewards, wallet_balance, self._delegation)
 
                     wallet_unlocked = wallet.unlock()
                     wallet_leave = wallet.leave()
@@ -325,7 +325,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                         curr_id = self._wallets.next(curr_id)
 
                 except StopIteration:
-                    self._redelegate(reward_delegations)
+                    self._redelegate()
                     self._endDistribution()
                     return
 
@@ -345,24 +345,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distributing.set(True)
 
     # def _redelegate(self):
-    def _redelegate(self, reward_delegations: dict):
+    def _redelegate(self):
         """
         Re-stake and re-delegate with the rewards claimed at the start of the cycle.
         """
-        Logger.info(f"Rewards delegations: {reward_delegations}")
         restake_value = self.getStaked() + self._rewards.get() - self._total_unstake_in_term.get()
-        delegation = self.getDelegation()["delegations"]
-
-        for deleg in delegation:
-            prep_address = deleg["address"]
-            if prep_address in reward_delegations:
-                deleg["value"] += reward_delegations[prep_address]
-
         if restake_value >= self.getStaked():
             self._system_score.setStake(restake_value)
-            self._system_score.setDelegation(delegation)
+            self._delegate()
         else:
-            self._system_score.setDelegation(delegation)
+            self._delegate()
             self._system_score.setStake(restake_value)
 
     def _endDistribution(self):
@@ -395,54 +387,37 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if wallet.node_id == 0:
             wallet.node_id = self._wallets.append(str(sender))
 
-        # prepare new (updated) delegation list
-        delegations: list = self.getDelegation()["delegations"]
         if delegation is None:
+            # proportional divide user's join amount between the current delegating preps
             delegation = {}
-            if len(delegations) != 0:
-                total_delegated = self.getDelegation()["totalDelegated"]
-                for it in delegations:
-                    basis_point = Utils.calcBPS(it["value"], total_delegated)
+            delegations: dict = self.getDelegation()
+            if len(delegations["delegations"]) != 0:
+                for it in delegations["delegations"]:
+                    basis_point = Utils.calcBPS(it["value"], delegations["totalDelegated"])
                     delegation_value = int((amount * basis_point) / 10000)
                     delegation[str(it["address"])] = delegation_value
-                    it["value"] += delegation_value
-                    # self._delegations[it["address"]] = amount
+                    self._delegation[it["address"]] += delegation_value
             else:
                 delegation[str(PREP_ADDRESS)] = amount
-                delegations.append({
-                    "address": PREP_ADDRESS,
-                    "value": amount
-                })
-                # self._delegations[PREP_ADDRESS] = amount
+                self._delegation[PREP_ADDRESS] = amount
+                self._delegation_keys.put(PREP_ADDRESS)
         else:
+            # update LICX delegation dictionary
             prep_list: list = self._system_score.getMainPReps()["preps"]
             prep_list.extend(self._system_score.getSubPReps()["preps"])
             for address, value in delegation.items():
-                Logger.info(f"Address : {address}, Value: {value}")
-                if not any(str(prep['address']) == address for prep in prep_list):
+                prep_address: Address = Address.from_string(address)
+                if not any(prep['address'] == prep_address for prep in prep_list):
                     revert("LiquidICX: Given address is not a P-Rep.")
-                index = next((i for i, obj in enumerate(delegations) if str(obj["address"]) == address), -1)
-                if index != -1:
-                    delegations[index]["value"] += value
-                    Logger.info(f"delegations,{delegations}")
-                    for (key, value) in self._delegations:
-                        Logger.info(f"Key: {key}, Value: {value}")
-                    # self._delegations[Address.from_string(address)] += value
+                if prep_address in self._delegation_keys:
+                    self._delegation[prep_address] += value
                 else:
-                    Logger.info("Im here")
-                    delegations.append({
-                        "address": Address.from_string(address),
-                        "value": value
-                    })
-                    self._delegations[Address.from_string(address)] = value
-
-        for it in self._delegations:
-            Logger.info(f"Iterator: {it}")
+                    self._delegation_keys.put(prep_address)
+                    self._delegation[prep_address] = value
 
         wallet.join(amount, delegation)
         self._system_score.setStake(self.getStaked() + amount)
-        self._system_score.setDelegation(delegations)
-        Logger.info(f"DelegationsSCORE: {self.getDelegation()['delegations']}")
+        self._delegate()
         self.Join(sender, amount)
 
     def _leave(self, _account: Address, _value: int):
@@ -465,20 +440,20 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._balances[sender] <= 0:
             revert("LiquidICX: Out of balance.")
 
-        old_delegations = self.getDelegation()["delegations"]
-        # prepare new (updated) delegation list
-        for address, value in delegation.items():
-            index = next((i for i, obj in enumerate(old_delegations) if str(obj["address"]) == address), -1)
-            if index != -1:
-                old_delegations[index]["value"] += value
-            else:
-                old_delegations.append({
-                    "address": Address.from_string(address),
-                    "value": value
-                })
-
-        wallet = Wallet(self.db, sender)
-        wallet.changeDelegation()
+        # old_delegations = self.getDelegation()["delegations"]
+        # # prepare new (updated) delegation list
+        # for address, value in delegation.items():
+        #     index = next((i for i, obj in enumerate(old_delegations) if str(obj["address"]) == address), -1)
+        #     if index != -1:
+        #         old_delegations[index]["value"] += value
+        #     else:
+        #         old_delegations.append({
+        #             "address": Address.from_string(address),
+        #             "value": value
+        #         })
+        #
+        # wallet = Wallet(self.db, sender)
+        # wallet.changeDelegation()
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
@@ -520,6 +495,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         # Emits an event log `Transfer`
         self.Transfer(_from, _to, _value, _data)
+
+    def _delegate(self):
+        delegations = []
+        for address in self._delegation_keys:
+            Logger.info(f"Address: {address}: Delegation: {self._delegation[address]}")
+            delegations.append({
+                "address": address,
+                "value": self._delegation[address]
+            })
+        self._system_score.setDelegation(delegations)
 
     @payable
     def fallback(self):

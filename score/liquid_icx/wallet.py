@@ -21,10 +21,8 @@ class Wallet:
         self._wallet_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
 
         # Tracking individual wallet's delegations
-        # self._voting = VarDB("voting_" + str(_address), db, value_type=int)
         self._delegation_address = ArrayDB("delegation_addr_" + str(_address), db, value_type=str)
         self._delegation_value = ArrayDB("delegation_value_" + str(_address), db, value_type=int)
-        # self._delegation_bps = ArrayDB("delegation_bps_" + str(_address), db, value_type=int)
 
     def join(self, join_amount: int, delegation: dict):
         """
@@ -42,10 +40,12 @@ class Wallet:
         self._unlock_heights.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
         self.locked = self.locked + join_amount
 
-
-
         delegation_amount_sum = 0
         for addr, value in delegation.items():
+            # TODO: we have 2 same loops (loop in liquid_icx.py line 417). They should be joint,
+            #  so we don't waste steps. Not sure yet, what would be the cleanest solution,
+            #  but I think the best way would be to pass global LICX delegation dictionary
+            #  and update it in here in wallet.py
             if addr not in self._delegation_address:
                 self._delegation_address.put(addr)
                 self._delegation_value.put(value)
@@ -127,26 +127,13 @@ class Wallet:
                     break
         return claim_amount
 
-    def calcDistributeDelegations(self, reward: int, balance: int) -> dict:
+    def calcDistributeDelegations(self, reward: int, balance: int, delegations: DictDB):
         Logger.info(f"Reward: {reward}, Balance: {balance}")
-        reward_delegations = dict()
         for i in range(len(self._delegation_address)):
             basis_point = Utils.calcBPS(self._delegation_value[i], balance)
-            self._delegation_value[i] += int((reward * basis_point) / 10000)
-
-        # for deleg in delegation["delegations"]:
-        #     prep_address: Address = deleg["address"]
-        #     basis_point = Utils.calcBPS(deleg["value"], delegation["totalDelegated"])
-        #     delegation_value = int((reward * basis_point) / 10000)
-        #     reward_delegations[prep_address] = delegation_value
-        #     Logger.info(f"Basis_point: {basis_point}, delegation_value:{delegation_value}, \n, {reward_delegations}")
-        #     if str(prep_address) not in self._delegation_address:
-        #         self._delegation_address.put(str(prep_address))
-        #         self._delegation_value.put(delegation_value)
-        #     else:
-        #         index = list(self._delegation_address).index(str(prep_address))
-        #         self._delegation_value[index] += delegation_value
-        return reward_delegations
+            delegation_value = int((reward * basis_point) / 10000)
+            self._delegation_value[i] += delegation_value
+            delegations[Address.from_string(self._delegation_address[i])] += delegation_value
 
     def changeDelegation(self):
         pass

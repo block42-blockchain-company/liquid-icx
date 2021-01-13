@@ -155,52 +155,43 @@ class LiquidICXTest(LICXTestBase):
         """
         1. Join with 20 ICX, vote for two different preps with 10 ICX each and perform basic checks
         2. Second join with additional 10 ICX, which are delegated to first prep in list
-        :return:
         """
         # 1
         delegation = {
-            # self.prep_list[0]: 6 * 10**18,
             self.prep_list[1]: 6 * 10 ** 18,
             self.prep_list[2]: 6 * 10 ** 18
         }
         join_tx = self._join(value=12, prep_list=delegation)
-        pp.pprint(join_tx)
         self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
         self.assertEqual(len(self._get_wallets()), 1)
         # check wallet
-        # owner = self._get_wallet()
-        # self.assertEqual(6*10**12, int(owner["delegation_values"][0], 16), msg=pp.pformat(owner))
-        # self.assertEqual(6*10**12, int(owner["delegation_values"][1], 16), msg=pp.pformat(owner))
-        # self.assertEqual(6*10**12, int(owner["delegation_values"][2], 16), msg=pp.pformat(owner))
-        # self.assertEqual(self.prep_list[0], owner["delegation_addr"][0], msg=pp.pformat(owner))
-        # self.assertEqual(self.prep_list[1], owner["delegation_addr"][1] , msg=pp.pformat(owner))
-        # self.assertEqual(self.prep_list[2], owner["delegation_addr"][2], msg=pp.pformat(owner))
-        # # check contract staking/delegating
-        # self.assertEqual(hex(12 * 10 ** 12), self._get_staked(), msg=pp.pformat(owner))
-        # self.assertEqual(hex(12 * 10 ** 12), self._get_delegation()["totalDelegated"], msg=pp.pformat(owner))
-        # delegations = self._get_delegation()["delegations"]
-        # self.assertEqual(hex(6 * 10 ** 12), delegations[0]["value"], msg=pp.pformat(owner))
-        # self.assertEqual(self.prep_list[0], delegations[0]["address"], msg=pp.pformat(owner))
-        # self.assertEqual(hex(6 * 10 ** 12), delegations[1]["value"], msg=pp.pformat(owner))
-        # self.assertEqual(self.prep_list[1], delegations[1]["address"], msg=pp.pformat(owner))
-        # self.assertEqual(hex(6 * 10 ** 12), delegations[2]["value"], msg=pp.pformat(owner))
-        # self.assertEqual(self.prep_list[2], delegations[2]["address"], msg=pp.pformat(owner))
+        owner = self._get_wallet()
+        self.assertEqual(6 * 10 ** 18, int(owner["delegation_values"][0], 16), msg=pp.pformat(owner))
+        self.assertEqual(6 * 10 ** 18, int(owner["delegation_values"][1], 16), msg=pp.pformat(owner))
+        self.assertEqual(self.prep_list[1], owner["delegation_addr"][0], msg=pp.pformat(owner))
+        self.assertEqual(self.prep_list[2], owner["delegation_addr"][1], msg=pp.pformat(owner))
+        # check contract staking/delegating
+        self.assertEqual(hex(12 * 10 ** 18), self._get_staked(), msg=pp.pformat(owner))
+        self.assertEqual(hex(12 * 10 ** 18), self._get_delegation()["totalDelegated"], msg=pp.pformat(owner))
+        delegations = self._get_delegation()["delegations"]
+        self.assertEqual(hex(6 * 10 ** 18), delegations[0]["value"], msg=pp.pformat(owner))
+        self.assertEqual(self.prep_list[1], delegations[0]["address"], msg=pp.pformat(owner))
+        self.assertEqual(hex(6 * 10 ** 18), delegations[1]["value"], msg=pp.pformat(owner))
+        self.assertEqual(self.prep_list[2], delegations[1]["address"], msg=pp.pformat(owner))
         # 2
         delegation = {self.prep_list[0]: 10 * 10 ** 18}
         join_tx = self._join(value=10, prep_list=delegation)
-        pp.pprint(join_tx)
         self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
         # check contract staking/delegating
-        # self.assertEqual(self._get_staked(), hex(28 * 10 ** 18), msg=pp.pformat(owner))
-        # self.assertEqual(self._get_delegation()["totalDelegated"], hex(28 * 10 ** 18), msg=pp.pformat(owner))
-        # delegations = self._get_delegation()["delegations"]
-        # self.assertEqual(delegations[0]["value"], hex(16 * 10 ** 18), msg=pp.pformat(owner))
-        # self.assertEqual(delegations[0]["address"], self.prep_list[0], msg=pp.pformat(owner))
-        # self.assertEqual(delegations[1]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
-        # self.assertEqual(delegations[1]["address"], self.prep_list[1], msg=pp.pformat(owner))
-        # self.assertEqual(delegations[2]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
-        # self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(owner))
-        #
+        self.assertEqual(self._get_staked(), hex(22 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(self._get_delegation()["totalDelegated"], hex(22 * 10 ** 18), msg=pp.pformat(owner))
+        delegations = self._get_delegation()["delegations"]
+        self.assertEqual(delegations[0]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[0]["address"], self.prep_list[1], msg=pp.pformat(owner))
+        self.assertEqual(delegations[1]["value"], hex(6 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[1]["address"], self.prep_list[2], msg=pp.pformat(owner))
+        self.assertEqual(delegations[2]["value"], hex(10 * 10 ** 18), msg=pp.pformat(owner))
+        self.assertEqual(delegations[2]["address"], self.prep_list[0], msg=pp.pformat(owner))
 
     def test_5(self):
         """
@@ -219,9 +210,7 @@ class LiquidICXTest(LICXTestBase):
         print("-----Starting test-case------")
         # 1a
         delegation_value = 10 * 10 ** 18
-        delegation = {
-            self.prep_list[0]: delegation_value,
-        }
+        delegation = {self.prep_list[0]: delegation_value}
         join_tx = self._join(value=18, prep_list=delegation)
         self.assertFalse(join_tx["status"], msg=pp.pformat(join_tx))
         self.assertIn("Delegations values do not match", join_tx["failure"]["message"], msg=pp.pformat(join_tx))
@@ -251,67 +240,30 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(int(delegations[2]["value"], 16), delegation_value * 3, msg=pp.pformat(delegations))
         self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(delegations))
         # 5
-        owner = self._get_wallet()
-        print(int(owner["unlock_heights"][-1], 16))
-        pp.pprint(f"Term_start: {self._getTermStart()}, Next term start {self._getNextTermStart()}")
-        while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
-            time.sleep(1)
-        reward_icx = int(self._queryIScore()["estimatedICX"], 16)
-        pp.pprint(reward_icx)
-        tx_distribute = self._distribute()
-        self.assertEqual(tx_distribute["status"], 1, msg=pp.pformat(tx_distribute))
-        owner = self._get_wallet()
-        self.assertEqual(owner["locked"], hex(0), msg=pp.pformat(owner))
-        self.assertEqual(len(owner["join_values"]), 0, msg=pp.pformat(owner))
-        self.assertEqual(len(owner["unlock_heights"]), 0, msg=pp.pformat(owner))
-        delegations = self._get_delegation()["delegations"]
-        pp.pprint(delegations)
-        self.assertEqual(int((delegation_value * 2) + reward_icx * 0.2), int(delegations[0]["value"], 16),
-                         msg=pp.pformat(delegations))
-        self.assertEqual(delegations[0]["address"], self.prep_list[0], msg=pp.pformat(delegations))
-        self.assertEqual(int((delegation_value * 5) + reward_icx * 0.5), int(delegations[1]["value"], 16),
-                         msg=pp.pformat(delegations))
-        self.assertEqual(delegations[1]["address"], self.prep_list[1], msg=pp.pformat(delegations))
-        self.assertEqual(int((delegation_value * 3) + reward_icx * 0.3), int(delegations[2]["value"], 16),
-                         msg=pp.pformat(delegations))
-        self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(delegations))
-
-    def test_6(self):
-        """
-        cx72cf3a2928b11f5c42125f79f68caa02df15eb16
-
-        [{'address': 'hx000e0415037ae871184b2c7154e5924ef2bc075e',
-          'value': '0x1158e460913d00000'},
-         {'address': 'hx9eec61296a7010c867ce24c20e69588e2832bc52',
-          'value': '0x2b5e3af16b1880000'},
-         {'address': 'hx2fb8fb849cba40bf59a48ebcef899d6ae45382f4',
-          'value': '0x1a055690d9db80000'}]
-        """
-        # self._score_address = "cx72cf3a2928b11f5c42125f79f68caa02df15eb16"
+        #
+        # 3owner = self._get_wallet()
+        # print(int(owner["join_heights"][-1], 16))
+        # print(int(owner["unlock_heights"][-1], 16))
+        # pp.pprint(f"Term_start: {self._getTermStart()}, Next term start {self._getNextTermStart()}")
+        # while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
+        #     pp.pprint(f"Term_start: {self._getTermStart()}, i-score {int(self._queryIScore()['estimatedICX'], 16)}")
+        #     time.sleep(2)
+        # reward_icx = int(self._queryIScore()["estimatedICX"], 16)
+        # pp.pprint(reward_icx)
         # tx_distribute = self._distribute()
         # self.assertEqual(tx_distribute["status"], 1, msg=pp.pformat(tx_distribute))
-        # height = self._icon_service.get_block("latest")
-        # pp.pprint(height)
-        # pp.pprint(self._getTermStart())
-        # pp.pprint(self._getNextTermStart())
-        # print("-----------")
-        # pp.pprint(self._get_delegation())
-        # pp.pprint(int(self._get_staked(), 16))
-        # pp.pprint(self._queryIScore())
-
-        # join_tx = self._join(value=999)
-        # self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
         # owner = self._get_wallet()
-        # print(("unlocked:", int(owner["unlock_heights"][0], 16)))
-        # while (True):
-        #     height = self._icon_service.get_block("latest")
-        #     pp.pprint(f"Heeight: {height['height']}, Term_start: {self._getTermStart()}, Next term start {self._getNextTermStart()}")
-        #     pp.pprint(self._queryIScore())
-        #     time.sleep(2)
-
-
-"""
-{'blockHeight': '0x1ca4',
- 'estimatedICX': '0x522f76e60c0b',
- 'iscore': '0x1410968729f0b29'}
-"""
+        # self.assertEqual(owner["locked"], hex(0), msg=pp.pformat(owner))
+        # self.assertEqual(len(owner["join_values"]), 0, msg=pp.pformat(owner))
+        # self.assertEqual(len(owner["unlock_heights"]), 0, msg=pp.pformat(owner))
+        # delegations = self._get_delegation()["delegations"]
+        # pp.pprint(delegations)
+        # self.assertEqual(int((delegation_value * 2) + reward_icx * 0.2), int(delegations[0]["value"], 16),
+        #                  msg=pp.pformat(delegations))
+        # self.assertEqual(delegations[0]["address"], self.prep_list[0], msg=pp.pformat(delegations))
+        # self.assertEqual(int((delegation_value * 5) + reward_icx * 0.5), int(delegations[1]["value"], 16),
+        #                  msg=pp.pformat(delegations))
+        # self.assertEqual(delegations[1]["address"], self.prep_list[1], msg=pp.pformat(delegations))
+        # self.assertEqual(int((delegation_value * 3) + reward_icx * 0.3), int(delegations[2]["value"], 16),
+        #                  msg=pp.pformat(delegations))
+        # self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(delegations))
