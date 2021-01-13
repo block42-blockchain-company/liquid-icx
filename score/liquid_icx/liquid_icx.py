@@ -6,6 +6,7 @@ from .interfaces.irc_2_interface import *
 from .interfaces.token_fallback_interface import TokenFallbackInterface
 from .scorelib.linked_list import *
 from .scorelib.utils import *
+from .scorelib.iterable_dict import *
 
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
@@ -59,6 +60,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distributing = VarDB("distributing", db, bool)
 
         self._cap = VarDB("cap", db, int)
+
+        self._delegations = IterableDictDB("delegations", db, Address, int)
 
         # System SCORE
         self._system_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
@@ -287,7 +290,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             if not self._rewards.get():
                 self._claimRewards()
                 self._distribute_it.set(self._wallets.get_head_node().id)  # get head id for start iteration
-                Logger.info(f"Rewards: {self._rewards.get()}")
+                # Logger.info(f"Rewards: {self._rewards.get()}")
 
             reward_delegations = dict()
             curr_id = self._distribute_it.get()
@@ -300,8 +303,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     wallet_balance = self._balances[curr_address]
                     if wallet_balance >= self._min_value_to_get_rewards.get() and self._total_supply.get():
                         wallet_rewards = int(wallet_balance / self._total_supply.get() * self._rewards.get())
-                        reward_delegations.update(wallet.calcDistributeDelegations(wallet_rewards,
-                                                                                   self.getDelegation()))
+                        reward_delegations.update(wallet.calcDistributeDelegations(wallet_rewards, wallet_balance))
 
                     wallet_unlocked = wallet.unlock()
                     wallet_leave = wallet.leave()
@@ -404,30 +406,43 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     delegation_value = int((amount * basis_point) / 10000)
                     delegation[str(it["address"])] = delegation_value
                     it["value"] += delegation_value
+                    # self._delegations[it["address"]] = amount
             else:
                 delegation[str(PREP_ADDRESS)] = amount
                 delegations.append({
                     "address": PREP_ADDRESS,
                     "value": amount
                 })
+                # self._delegations[PREP_ADDRESS] = amount
         else:
             prep_list: list = self._system_score.getMainPReps()["preps"]
             prep_list.extend(self._system_score.getSubPReps()["preps"])
             for address, value in delegation.items():
+                Logger.info(f"Address : {address}, Value: {value}")
                 if not any(str(prep['address']) == address for prep in prep_list):
                     revert("LiquidICX: Given address is not a P-Rep.")
                 index = next((i for i, obj in enumerate(delegations) if str(obj["address"]) == address), -1)
                 if index != -1:
                     delegations[index]["value"] += value
+                    Logger.info(f"delegations,{delegations}")
+                    for (key, value) in self._delegations:
+                        Logger.info(f"Key: {key}, Value: {value}")
+                    # self._delegations[Address.from_string(address)] += value
                 else:
+                    Logger.info("Im here")
                     delegations.append({
                         "address": Address.from_string(address),
                         "value": value
                     })
+                    self._delegations[Address.from_string(address)] = value
+
+        for it in self._delegations:
+            Logger.info(f"Iterator: {it}")
 
         wallet.join(amount, delegation)
         self._system_score.setStake(self.getStaked() + amount)
         self._system_score.setDelegation(delegations)
+        Logger.info(f"DelegationsSCORE: {self.getDelegation()['delegations']}")
         self.Join(sender, amount)
 
     def _leave(self, _account: Address, _value: int):

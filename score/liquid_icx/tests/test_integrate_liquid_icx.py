@@ -213,7 +213,8 @@ class LiquidICXTest(LICXTestBase):
         5. Wait till the unlock heights to unlock the LICX. Distribute and perform checks
         """
         # 0
-        while self._icon_service.get_block("latest")["height"] <= self._getTermStart():
+        next_term = self._getNextTermStart()
+        while self._icon_service.get_block("latest")["height"] < next_term:
             time.sleep(1)
         print("-----Starting test-case------")
         # 1a
@@ -254,8 +255,6 @@ class LiquidICXTest(LICXTestBase):
         print(int(owner["unlock_heights"][-1], 16))
         pp.pprint(f"Term_start: {self._getTermStart()}, Next term start {self._getNextTermStart()}")
         while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
-            reward_icx = int(self._queryIScore()["estimatedICX"], 16)
-            pp.pprint(f"Reward: {reward_icx}, Height: {self._icon_service.get_block('latest')['height']}")
             time.sleep(1)
         reward_icx = int(self._queryIScore()["estimatedICX"], 16)
         pp.pprint(reward_icx)

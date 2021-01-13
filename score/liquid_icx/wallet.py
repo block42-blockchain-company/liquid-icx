@@ -42,6 +42,8 @@ class Wallet:
         self._unlock_heights.put(iiss_info["nextPRepTerm"] + TERM_LENGTH)
         self.locked = self.locked + join_amount
 
+
+
         delegation_amount_sum = 0
         for addr, value in delegation.items():
             if addr not in self._delegation_address:
@@ -125,21 +127,25 @@ class Wallet:
                     break
         return claim_amount
 
-    def calcDistributeDelegations(self, reward: int, delegation: dict) -> dict:
-        Logger.info(f"Reward: {reward}, Delegation: {delegation}")
+    def calcDistributeDelegations(self, reward: int, balance: int) -> dict:
+        Logger.info(f"Reward: {reward}, Balance: {balance}")
         reward_delegations = dict()
-        for deleg in delegation["delegations"]:
-            prep_address: Address = deleg["address"]
-            basis_point = Utils.calcBPS(deleg["value"], delegation["totalDelegated"])
-            delegation_value = int((reward * basis_point) / 10000)
-            reward_delegations[prep_address] = delegation_value
-            Logger.info(f"Basis_point: {basis_point}, delegation_value:{delegation_value}, \n, {reward_delegations}")
-            if str(prep_address) not in self._delegation_address:
-                self._delegation_address.put(str(prep_address))
-                self._delegation_value.put(delegation_value)
-            else:
-                index = list(self._delegation_address).index(str(prep_address))
-                self._delegation_value[index] += delegation_value
+        for i in range(len(self._delegation_address)):
+            basis_point = Utils.calcBPS(self._delegation_value[i], balance)
+            self._delegation_value[i] += int((reward * basis_point) / 10000)
+
+        # for deleg in delegation["delegations"]:
+        #     prep_address: Address = deleg["address"]
+        #     basis_point = Utils.calcBPS(deleg["value"], delegation["totalDelegated"])
+        #     delegation_value = int((reward * basis_point) / 10000)
+        #     reward_delegations[prep_address] = delegation_value
+        #     Logger.info(f"Basis_point: {basis_point}, delegation_value:{delegation_value}, \n, {reward_delegations}")
+        #     if str(prep_address) not in self._delegation_address:
+        #         self._delegation_address.put(str(prep_address))
+        #         self._delegation_value.put(delegation_value)
+        #     else:
+        #         index = list(self._delegation_address).index(str(prep_address))
+        #         self._delegation_value[index] += delegation_value
         return reward_delegations
 
     def changeDelegation(self):
