@@ -3,12 +3,11 @@ from .liquid_icx import *
 
 
 class Wallet:
-
     __sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
     def __init__(self, db: IconScoreDatabase, _address: Address):
-        self._locked = VarDB("locked_" + _address.__str__(), db, value_type=int)
-        self._unstaking = VarDB("unstaking_" + _address.__str__(), db, value_type=int)
+        self._locked = VarDB("locked_" + str(_address), db, value_type=int)
+        self._unstaking = VarDB("unstaking_" + str(_address), db, value_type=int)
 
         # Presents how much user deposited to SCORE in chronological order
         self._join_values = ArrayDB("join_values_" + str(_address), db, value_type=int)
@@ -19,7 +18,7 @@ class Wallet:
         self._unstake_heights = ArrayDB("unstake_heights" + str(_address), db, value_type=int)
 
         # Wallet ID in linked list
-        self._wallet_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
+        self._node_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
 
         # Tracking individual wallet's delegations
         self._delegation_address = ArrayDB("delegation_addr_" + str(_address), db, value_type=Address)
@@ -135,6 +134,9 @@ class Wallet:
                     break
         return claim_amount
 
+    def exists(self):
+        return self.node_id > 0
+
     def calcDistributeDelegations(self, reward: int, balance: int, delegations: DictDB):
         Logger.info(f"Reward: {reward}, Balance: {balance}")
         for i in range(len(self._delegation_address)):
@@ -189,14 +191,14 @@ class Wallet:
         return self._unstake_heights
 
     @property
-    def node_id(self):
-        return self._wallet_id.get()
+    def node_id(self) -> int:
+        return self._node_id.get()
 
     @node_id.setter
     def node_id(self, value):
         if self.node_id != 0:
             revert("LiquidICX: The node id was already set.")
-        self._wallet_id.set(value)
+        self._node_id.set(value)
 
     @property
     def delegation_address(self):

@@ -6,7 +6,6 @@ from .interfaces.irc_2_interface import *
 from .interfaces.token_fallback_interface import TokenFallbackInterface
 from .scorelib.linked_list import *
 from .scorelib.utils import *
-from .scorelib.iterable_dict import *
 
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
@@ -117,9 +116,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return Wallet(self.db, _owner).locked
 
     @external(readonly=True)
-    def getWallet(self, _address: Address = None) -> dict:
-        if _address is None:
-            revert("LiquidICX: You need to specify the '_address' in your call.")
+    def getWallet(self, _address: Address) -> dict:
         return Wallet(self.db, _address).serialize()
 
     @external(readonly=True)
@@ -154,12 +151,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return self._total_unstake_in_term.get()
 
     @external(readonly=True)
-    def selectFromWallets(self, address: str) -> list:
-        return self._wallets.select(0, self.linkedlistdb_sentinel, match=address)
-
-    @external(readonly=True)
-    def getWalletByNodeID(self, id: int) -> Address:
-        return self._wallets.node_value(id)
+    def getWalletByNodeID(self, node_id: int) -> Address:
+        return self._wallets.node_value(node_id)
 
     @external(readonly=True)
     def getCap(self) -> int:
@@ -211,17 +204,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Only owner function at current state.")
         self._cap.set(_value * 10 ** self._decimals.get())
 
-    @staticmethod
-    def linkedlistdb_sentinel(db: IconScoreDatabase, item, **kwargs) -> bool:
-        """
-        :param db: SCORE's db instance
-        :param item:
-        :param kwargs:
-        :return: True if a match was found
-        """
-
-        node_id, value = item
-        return value == kwargs['match']
 
     @payable
     @external
@@ -258,8 +240,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         claim_amount = wallet.claim()
 
         if claim_amount:
-            self.icx.send(self.msg.sender, claim_amount)
-            self.Claim()
+            if self.icx.send(self.msg.sender, claim_amount):
+                self.Claim()
+            else:
+                revert("LiquidICX: Could not send ICX to the given address.")
 
     @external
     def vote(self, delegation: str) -> None:
@@ -291,7 +275,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             if not self._rewards.get():
                 self._claimRewards()
                 self._distribute_it.set(self._wallets.get_head_node().id)  # get head id for start iteration
-                # Logger.info(f"Rewards: {self._rewards.get()}")
 
             curr_id = self._distribute_it.get()
             for it in range(self._iteration_limit.get()):
@@ -344,7 +327,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._system_score.claimIScore()
         self._distributing.set(True)
 
-    # def _redelegate(self):
     def _redelegate(self):
         """
         Re-stake and re-delegate with the rewards claimed at the start of the cycle.
@@ -384,7 +366,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         # Create wallet object and append to linked list if first time joining
         wallet = Wallet(self.db, sender)
-        if wallet.node_id == 0:
+        if not wallet.exists():
             wallet.node_id = self._wallets.append(str(sender))
 
         if delegation is None:
@@ -447,12 +429,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
         self._balances[_from] = self._balances[_from] - _value
-        if sender.node_id and self._balances[_from] < self._min_value_to_get_rewards.get() and sender.locked == 0:
+        if sender.exists() and self._balances[_from] < self._min_value_to_get_rewards.get() and sender.locked == 0:
             self._wallets.remove(sender.node_id)
             sender.node_id = 0
 
         self._balances[_to] = self._balances[_to] + _value
-        if not receiver.node_id and self._balances[_to] >= self._min_value_to_get_rewards.get():
+        if not receiver.exists() and self._balances[_to] >= self._min_value_to_get_rewards.get():
             node_id = self._wallets.append(str(_to))
             receiver.node_id = node_id
 
@@ -480,3 +462,4 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Called when anyone sends ICX to the SCORE.
         """
         revert('LiquidICX: LICX does not accept ICX. If you want to enter the pool, you need to call "join" method.')
+
