@@ -216,8 +216,6 @@ class Wallet:
             "unstaking": self.unstaking,
             "leave_values": list(self.leave_values),
             "unstake_heights": list(self.unstake_heights),
-            # "voting": self.voting,
             "delegation_addr": list(self.delegation_address),
             "delegation_values": list(self._delegation_value),
-            # "delegation_bps": list(self._delegation_bps)
         }

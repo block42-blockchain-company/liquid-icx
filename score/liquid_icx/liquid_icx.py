@@ -60,7 +60,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._cap = VarDB("cap", db, int)
 
-        # self._delegations = IterableDictDB("delegations", db, Address, int)
         self.delegation = DictDB("delegation", db, int)
         self.delegation_keys = ArrayDB("delegation_keys", db, Address)
 
