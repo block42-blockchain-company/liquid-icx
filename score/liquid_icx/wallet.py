@@ -1,8 +1,9 @@
 from .liquid_icx import *
-from .scorelib.utils import *
+# from .scorelib.utils import *
 
 
 class Wallet:
+
     __sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
     def __init__(self, db: IconScoreDatabase, _address: Address):
@@ -21,14 +22,15 @@ class Wallet:
         self._wallet_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
 
         # Tracking individual wallet's delegations
-        self._delegation_address = ArrayDB("delegation_addr_" + str(_address), db, value_type=str)
+        self._delegation_address = ArrayDB("delegation_addr_" + str(_address), db, value_type=Address)
         self._delegation_value = ArrayDB("delegation_value_" + str(_address), db, value_type=int)
 
-    def join(self, join_amount: int, delegation: dict):
+    def join(self, join_amount: int, delegation: dict, licx: IconScoreBase):
         """
         Adds new values to the wallet's join queues
         :param join_amount: amount of ICX that a wallet sent
         :param delegation:
+        :param licx
         """
 
         if len(self._join_values) >= 10:
@@ -41,22 +43,28 @@ class Wallet:
         self.locked = self.locked + join_amount
 
         delegation_amount_sum = 0
-        for addr, value in delegation.items():
-            # TODO: we have 2 same loops (loop in liquid_icx.py line 417). They should be joint,
-            #  so we don't waste steps. Not sure yet, what would be the cleanest solution,
-            #  but I think the best way would be to pass global LICX delegation dictionary
-            #  and update it in here in wallet.py
-            if addr not in self._delegation_address:
-                self._delegation_address.put(addr)
-                self._delegation_value.put(value)
-            else:
-                index = list(self._delegation_address).index(addr)
+        prep_list: list = self.__sys_score.getMainPReps()["preps"]
+        prep_list.extend(self.__sys_score.getSubPReps()["preps"])
+        for address, value in delegation.items():
+            prep_address: Address = Address.from_string(address)
+            if prep_address in self._delegation_address:
+                index = list(self._delegation_address).index(prep_address)
                 self._delegation_value[index] += value
+                licx.delegation[prep_address] += value
+            else:
+                if prep_address in licx.delegation_keys:
+                    licx.delegation[prep_address] += value
+                elif not any(prep['address'] == prep_address for prep in prep_list):
+                    revert("LiquidICX: Given address is not a P-Rep.")
+                else:
+                    licx.delegation_keys.put(prep_address)
+                    licx.delegation[prep_address] = value
+                self._delegation_address.put(prep_address)
+                self._delegation_value.put(value)
             delegation_amount_sum += value
 
         if delegation_amount_sum != join_amount:
-            revert(
-                f"LiquidICX: Delegations values do not match to the amount of ICX sent. {delegation_amount_sum} : {join_amount}")
+            revert("LiquidICX: Delegations values do not match to the amount of ICX sent.")
 
     def requestLeave(self, _leave_amount):
         """
@@ -190,14 +198,6 @@ class Wallet:
             revert("LiquidICX: The node id was already set.")
         self._wallet_id.set(value)
 
-    # @property
-    # def voting(self):
-    #     return self._voting.get()
-    #
-    # @voting.setter
-    # def voting(self, voting: int):
-    #     self._voting.set(voting)
-
     @property
     def delegation_address(self):
         return self._delegation_address
@@ -205,10 +205,6 @@ class Wallet:
     @property
     def delegation_value(self):
         return self._delegation_value
-
-    # @property
-    # def delegation_value(self):
-    #     return self._delegation_bps
 
     def serialize(self) -> dict:
         return {

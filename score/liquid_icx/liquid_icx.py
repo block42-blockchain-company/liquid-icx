@@ -62,8 +62,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._cap = VarDB("cap", db, int)
 
         # self._delegations = IterableDictDB("delegations", db, Address, int)
-        self._delegation = DictDB("delegation", db, int)
-        self._delegation_keys = ArrayDB("delegation_keys", db, Address)
+        self.delegation = DictDB("delegation", db, int)
+        self.delegation_keys = ArrayDB("delegation_keys", db, Address)
 
         # System SCORE
         self._system_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
@@ -303,7 +303,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     wallet_balance = self._balances[curr_address]
                     if wallet_balance >= self._min_value_to_get_rewards.get() and self._total_supply.get():
                         wallet_rewards = int(wallet_balance / self._total_supply.get() * self._rewards.get())
-                        wallet.calcDistributeDelegations(wallet_rewards, wallet_balance, self._delegation)
+                        wallet.calcDistributeDelegations(wallet_rewards, wallet_balance, self.delegation)
 
                     wallet_unlocked = wallet.unlock()
                     wallet_leave = wallet.leave()
@@ -396,26 +396,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                     basis_point = Utils.calcBPS(it["value"], delegations["totalDelegated"])
                     delegation_value = int((amount * basis_point) / 10000)
                     delegation[str(it["address"])] = delegation_value
-                    self._delegation[it["address"]] += delegation_value
             else:
                 delegation[str(PREP_ADDRESS)] = amount
-                self._delegation[PREP_ADDRESS] = amount
-                self._delegation_keys.put(PREP_ADDRESS)
-        else:
-            # update LICX delegation dictionary
-            prep_list: list = self._system_score.getMainPReps()["preps"]
-            prep_list.extend(self._system_score.getSubPReps()["preps"])
-            for address, value in delegation.items():
-                prep_address: Address = Address.from_string(address)
-                if not any(prep['address'] == prep_address for prep in prep_list):
-                    revert("LiquidICX: Given address is not a P-Rep.")
-                if prep_address in self._delegation_keys:
-                    self._delegation[prep_address] += value
-                else:
-                    self._delegation_keys.put(prep_address)
-                    self._delegation[prep_address] = value
 
-        wallet.join(amount, delegation)
+        wallet.join(amount, delegation, self)
         self._system_score.setStake(self.getStaked() + amount)
         self._delegate()
         self.Join(sender, amount)
@@ -439,21 +423,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def _vote(self, sender: Address, delegation: dict):
         if self._balances[sender] <= 0:
             revert("LiquidICX: Out of balance.")
-
-        # old_delegations = self.getDelegation()["delegations"]
-        # # prepare new (updated) delegation list
-        # for address, value in delegation.items():
-        #     index = next((i for i, obj in enumerate(old_delegations) if str(obj["address"]) == address), -1)
-        #     if index != -1:
-        #         old_delegations[index]["value"] += value
-        #     else:
-        #         old_delegations.append({
-        #             "address": Address.from_string(address),
-        #             "value": value
-        #         })
-        #
-        # wallet = Wallet(self.db, sender)
-        # wallet.changeDelegation()
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
@@ -498,11 +467,10 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     def _delegate(self):
         delegations = []
-        for address in self._delegation_keys:
-            Logger.info(f"Address: {address}: Delegation: {self._delegation[address]}")
+        for address in self.delegation_keys:
             delegations.append({
                 "address": address,
-                "value": self._delegation[address]
+                "value": self.delegation[address]
             })
         self._system_score.setDelegation(delegations)
 

@@ -38,6 +38,6 @@ FAKE_SYSTEM_CONTRACT_YEOUIDO = Address.from_string('cx2b01010a92bf78ee464be0b5ef
 # PREP_ADDRESS = Address.from_string("hx168d2cfe6d73acb8cb690d3abda54d3af266addf")  # block42
 
 # ------------ BICON NET -------------
-PREP_ADDRESS = Address.from_string("hxec79e9c1c882632688f8c8f9a07832bcabe8be8f")
+PREP_ADDRESS = Address.from_string("hx000e0415037ae871184b2c7154e5924ef2bc075e")
 PREP_ADDRESS1 = Address.from_string("hxc60380ef4c1e76595a30fa40d7b519fb3c832db0")
 PREP_ADDRESS2 = Address.from_string("hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc")
