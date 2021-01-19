@@ -203,7 +203,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Only owner function at current state.")
         self._cap.set(_value * 10 ** self._decimals.get())
 
-
     @payable
     @external
     def join(self, delegation: str = None) -> None:
@@ -427,10 +426,22 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
+        for val in sender.delegation_value:
+            basis_point = Utils.calcBPS(val, self._balances[_from])
+            val -= int((_value * basis_point) / 10000)
         self._balances[_from] = self._balances[_from] - _value
         if sender.exists() and self._balances[_from] < self._min_value_to_get_rewards.get() and sender.locked == 0:
             self._wallets.remove(sender.node_id)
             sender.node_id = 0
+
+        if len(sender.delegation_value) != 0:
+            for val in sender.delegation_value:
+                basis_point = Utils.calcBPS(val, self._balances[_from])
+                val += int((_value * basis_point) / 10000)
+        else:
+            for i in self.delegation_keys:
+                basis_point = Utils.calcBPS(self.delegation[i], self._total_supply.get())
+                self.delegation[i] += int((_value * basis_point) / 10000)
 
         self._balances[_to] = self._balances[_to] + _value
         if not receiver.exists() and self._balances[_to] >= self._min_value_to_get_rewards.get():
@@ -461,4 +472,3 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Called when anyone sends ICX to the SCORE.
         """
         revert('LiquidICX: LICX does not accept ICX. If you want to enter the pool, you need to call "join" method.')
-

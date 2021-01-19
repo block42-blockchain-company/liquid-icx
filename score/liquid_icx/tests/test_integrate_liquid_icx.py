@@ -241,17 +241,18 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(delegations))
         # 5
         #
-        # 3owner = self._get_wallet()
-        # print(int(owner["join_heights"][-1], 16))
-        # print(int(owner["unlock_heights"][-1], 16))
-        # pp.pprint(f"Term_start: {self._getTermStart()}, Next term start {self._getNextTermStart()}")
-        # while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
-        #     pp.pprint(f"Term_start: {self._getTermStart()}, i-score {int(self._queryIScore()['estimatedICX'], 16)}")
-        #     time.sleep(2)
+        owner = self._get_wallet()
+        while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
+            time.sleep(2)
+        # print( self._icon_service.get_block("latest")["height"], ": ", int(owner["unlock_heights"][-1], 16))
         # reward_icx = int(self._queryIScore()["estimatedICX"], 16)
-        # pp.pprint(reward_icx)
-        # tx_distribute = self._distribute()
-        # self.assertEqual(tx_distribute["status"], 1, msg=pp.pformat(tx_distribute))
+        tx_distribute = self._distribute()
+        self.assertEqual(tx_distribute["status"], 1, msg=pp.pformat(tx_distribute))
+        wallets = self._get_wallets()
+        for wallet in wallets:
+            pp.pprint(self._get_wallet(wallet))
+        tx_transfer = self._transfer_licx_from_to(self._wallet, to=self._wallet2.get_address())
+        self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
         # owner = self._get_wallet()
         # self.assertEqual(owner["locked"], hex(0), msg=pp.pformat(owner))
         # self.assertEqual(len(owner["join_values"]), 0, msg=pp.pformat(owner))

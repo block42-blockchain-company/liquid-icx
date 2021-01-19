@@ -1,5 +1,5 @@
 from .liquid_icx import *
-# from .scorelib.utils import *
+from .scorelib.utils import *
 
 
 class Wallet:
