@@ -264,7 +264,6 @@ class LICXTestBase(IconIntegrateTestBase):
         }
         tx = self._build_transaction(method="getWallet", type_="read", params=paras)
         tx_result = self.process_call(tx, self._icon_service)
-        # pp.pprint(tx_result)
         return tx_result
 
     def _get_staked(self):

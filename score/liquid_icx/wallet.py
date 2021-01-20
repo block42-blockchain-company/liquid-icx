@@ -1,6 +1,4 @@
-from .liquid_icx import *
 from .scorelib.utils import *
-
 
 class Wallet:
     __sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
@@ -196,8 +194,8 @@ class Wallet:
 
     @node_id.setter
     def node_id(self, value):
-        if self.node_id != 0:
-            revert("LiquidICX: The node id was already set.")
+        # if self.node_id != 0 and value != 0:
+        #     revert("LiquidICX: The node id was already set.")
         self._node_id.set(value)
 
     @property
