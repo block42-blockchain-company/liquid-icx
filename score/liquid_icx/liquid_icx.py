@@ -1,14 +1,10 @@
-from iconservice import *
-
+import iconservice
 from .scorelib.consts import *
-# from .wallet import Wallet
 from .wallet import Wallet
 from .interfaces.irc_2_interface import *
 from .interfaces.token_fallback_interface import TokenFallbackInterface
 from .scorelib.linked_list import *
 from .scorelib.utils import *
-
-RANDOM_CONST = 1
 
 
 class LiquidICX(IconScoreBase, IRC2TokenStandard):
@@ -404,8 +400,38 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self.LeaveRequest(_account, _value)
 
     def _vote(self, sender: Address, delegation: dict):
-        if self._balances[sender] <= 0:
-            revert("LiquidICX: Out of balance.")
+        if delegation is None:
+            revert("LIquidICX: Delegation can not be None")
+
+        wallet = Wallet(self.db, sender)
+        if len(wallet.delegation_address) > 0:
+            # remove previous delegations
+            sum_undelegated = 0
+            while len(wallet.delegation_address) != 0:
+                prep_address = wallet.delegation_address.pop()
+                deleg = wallet.delegation_value.pop()
+                self.delegation[prep_address] -= deleg
+                sum_undelegated += deleg
+                if self.delegation[prep_address] <= 0:
+                    Utils.remove_from_array(self.delegation_keys, prep_address)
+
+            # add new delegations
+            sum_delegated = 0
+            for address, value in delegation.items():
+                prep_address: Address = Address.from_string(address)
+                if prep_address in self.delegation:
+                    self.delegation[prep_address] += value
+                else:
+                    self.delegation[prep_address] = value
+                    self.delegation_keys.put(prep_address)
+                wallet.delegation_value.put(value)
+                wallet.delegation_address.put(prep_address)
+                sum_delegated += value
+
+            if sum_undelegated != sum_delegated:
+                revert("LiquidICX: New total delegation should match with the previous total delegation.")
+            self._delegate()
+            # TODO: Should we add a Vote() event
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """

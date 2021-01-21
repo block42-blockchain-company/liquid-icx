@@ -19,9 +19,10 @@ from iconservice.icon_constant import GOVERNANCE_ADDRESS
 
 class LICXTestBase(IconIntegrateTestBase):
     # preps on yeouido test-net
-    PREP_LIST_YEOUIDO = ["hxc60380ef4c1e76595a30fa40d7b519fb3c832db0",
-                         "hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc",
-                         "hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"]
+    PREP_LIST_YEOUIDO = ["hxca1e081e686ec4975d14e0fb8f966c3f068298be",
+                         "hxe0cde6567eb6529fe31b0dc2f2697af84847f321",
+                         "hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"
+                         "hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc"]
 
     PREP_LIST_LOCAL = ["hx000e0415037ae871184b2c7154e5924ef2bc075e",
                        "hx9eec61296a7010c867ce24c20e69588e2832bc52",
@@ -252,6 +253,13 @@ class LICXTestBase(IconIntegrateTestBase):
         # LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
+    def _vote(self, from_: KeyWallet, delegation: dict, condition: bool = True):
+        paras = {"delegation": json.dumps(delegation)}
+        tx = self._build_transaction(method="vote", from_=from_.get_address(), params=paras)
+        tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
+        self.assertEqual(tx_result["status"], condition, msg=pp.pformat(tx_result))
+        return tx_result
+
     def _get_wallets(self):
         tx = self._build_transaction(method="getWallets", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
@@ -344,13 +352,11 @@ class LICXTestBase(IconIntegrateTestBase):
         paras = {"_owner": address}
         tx = self._build_transaction(method="balanceOf", params=paras, type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        # pp.pprint(tx_result)
         return tx_result
 
     def _total_supply(self):
         tx = self._build_transaction(method="totalSupply", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
-        # pp.pprint(tx_result)
         return tx_result
 
     def _transfer_licx_from_to(self, from_: KeyWallet = None, to: str = None, value=None):
@@ -363,5 +369,4 @@ class LICXTestBase(IconIntegrateTestBase):
         }
         tx = self._build_transaction(method="transfer", params=paras, from_=from_.get_address())
         tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
-        # pp.pprint(tx_result)
         return tx_result

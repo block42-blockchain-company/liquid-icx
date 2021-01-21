@@ -155,6 +155,7 @@ class LiquidICXTest(LICXTestBase):
         """
         1. Join with 20 ICX, vote for two different preps with 10 ICX each and perform basic checks
         2. Second join with additional 10 ICX, which are delegated to first prep in list
+        3.
         """
         # 1
         delegation = {
@@ -192,6 +193,12 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(delegations[1]["address"], self.prep_list[2], msg=pp.pformat(owner))
         self.assertEqual(delegations[2]["value"], hex(10 * 10 ** 18), msg=pp.pformat(owner))
         self.assertEqual(delegations[2]["address"], self.prep_list[0], msg=pp.pformat(owner))
+        # 3
+        delegation = {self.prep_list[3]: 50 * 10 ** 18}
+        self._vote(self._wallet, delegation, condition=False)
+        delegation = {self.prep_list[3]: 22 * 10 ** 18}
+        self._vote(self._wallet, delegation, condition=True)
+
 
     def test_5(self):
         """
@@ -249,6 +256,8 @@ class LiquidICXTest(LICXTestBase):
         # 6 transfer 10 LICX from wallet1 to wallet 2
         tx_transfer = self._transfer_licx_from_to(self._wallet, to=self._wallet2.get_address(), value=10)
         self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
+        self.assertEqual(hex(0), self._balance_of(self._wallet.get_address()))
+        self.assertEqual(hex(11 * delegation_value), self._balance_of(self._wallet2.get_address()))
         user_wallet = self._get_wallet(self._wallet2.get_address())
         self.assertEqual(self.prep_list[0], user_wallet["delegation_addr"][0], msg=pp.pformat(user_wallet))
         self.assertEqual(self.prep_list[1], user_wallet["delegation_addr"][1], msg=pp.pformat(user_wallet))
