@@ -432,6 +432,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 revert("LiquidICX: New total delegation should match with the previous total delegation.")
             self._delegate()
             # TODO: Should we add a Vote() event
+        else:
+            revert("LiquidICX: You do not have any voting power.")
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes) -> None:
         """
@@ -455,40 +457,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
-        # Maybe we should copy code bellow into
-        # Wallet.send(), so we remove code chunks from here
-        for i in range(len(sender.delegation_address)):
-            prep_address = sender.delegation_address[i]
-            delegated_value = sender.delegation_value[i]
-            basis_point = Utils.calcBPS(delegated_value, self._balances[_from])
-            subtract = int((_value * basis_point) / 10000)
-            sender.delegation_value[i] -= subtract
-            self.delegation[prep_address] -= subtract
-        self._balances[_from] = self._balances[_from] - _value
-        if sender.exists() and self._balances[_from] < self._min_value_to_get_rewards.get() and sender.locked == 0:
-            self._wallets.remove(sender.node_id)
-            sender.node_id = 0
-
-        # Same as above, but into Wallet.receive()
-        if self._balances[_to] > 0:
-            for i in range(len(receiver.delegation_address)):
-                prep_address = receiver.delegation_address[i]
-                delegated_value = receiver.delegation_value[i]
-                basis_point = Utils.calcBPS(delegated_value, self._balances[_to])
-                add = int((_value * basis_point) / 10000)
-                receiver.delegation_value[i] += add
-                self.delegation[prep_address] += add
-        else:
-            for i in self.delegation_keys:
-                basis_point = Utils.calcBPS(self.delegation[i], self._total_supply.get())
-                value = int((_value * basis_point) / 10000)
-                receiver.delegation_value.put(value)
-                receiver.delegation_address.put(self.delegation_keys[i])
-                self.delegation[i] += value
-        self._balances[_to] = self._balances[_to] + _value
-        if not receiver.exists() and self._balances[_to] >= self._min_value_to_get_rewards.get():
-            node_id = self._wallets.append(str(_to))
-            receiver.node_id = node_id
+        sender.send(_value, self)
+        receiver.receive(_value, self)
 
         if _to.is_contract:
             recipient_score = self.create_interface_score(_to, TokenFallbackInterface)
