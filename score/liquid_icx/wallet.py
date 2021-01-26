@@ -1,5 +1,6 @@
 from .scorelib.utils import *
 
+
 class Wallet:
     __sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
@@ -102,6 +103,7 @@ class Wallet:
         unlocked = 0
         if self.locked > 0:
             next_term = self.__sys_score.getIISSInfo()["nextPRepTerm"]
+            Logger.info(f"Next term: {next_term}, {next_term > self._unlock_heights[0]}")
             while self._unlock_heights:
                 if next_term > self._unlock_heights[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
@@ -133,48 +135,12 @@ class Wallet:
                     break
         return claim_amount
 
-    def exists(self):
-        return self.node_id > 0
-
     def calcDistributeDelegations(self, reward: int, balance: int, delegations: DictDB):
         for i in range(len(self._delegation_address)):
             basis_point = Utils.calcBPS(self._delegation_value[i], balance)
             delegation_value = int((reward * basis_point) / 10000)
             self._delegation_value[i] += delegation_value
             delegations[Address.from_string(self._delegation_address[i])] += delegation_value
-
-    def send(self, _value: int, licx: IconScoreBase):
-        for i in range(len(self.delegation_address)):
-            basis_point = Utils.calcBPS(self.delegation_value[i], licx._balances[self.__address])
-            subtract = int((_value * basis_point) / 10000)
-            self.delegation_value[i] -= subtract
-            licx.delegation[self.delegation_address[i]] -= subtract
-
-        licx._balances[self.__address] = licx._balances[self.__address] - _value
-        if self.exists() and licx._balances[self.__address] < licx._min_value_to_get_rewards.get() and self.locked == 0:
-            licx._wallets.remove(self.node_id)
-            self.node_id = 0
-
-    def receive(self, _value, licx: IconScoreBase):
-        if licx._balances[self.__address] > 0:
-            for i in range(len(self.delegation_address)):
-                prep_address = self.delegation_address[i]
-                delegated_value = self.delegation_value[i]
-                basis_point = Utils.calcBPS(delegated_value, licx._balances[self.__address])
-                add = int((_value * basis_point) / 10000)
-                self.delegation_value[i] += add
-                licx.delegation[prep_address] += add
-        else:
-            for i in licx.delegation_keys:
-                basis_point = Utils.calcBPS(licx.delegation[i], licx._total_supply.get())
-                value = int((_value * basis_point) / 10000)
-                self.delegation_value.put(value)
-                self.delegation_address.put(licx.delegation_keys[i])
-                licx.delegation[i] += value
-        licx._balances[self.__address] = licx._balances[self.__address] + _value
-        if not self.exists() and licx._balances[self.__address] >= licx._min_value_to_get_rewards.get():
-            node_id = licx._wallets.append(str(self.__address))
-            self.node_id = node_id
 
     @property
     def delegations(self) -> list:
@@ -185,6 +151,12 @@ class Wallet:
                 "value": self.delegation_value[it]
             })
         return delegations
+
+    def hasVotingPower(self) -> bool:
+        return len(self.delegation_address) > 0
+
+    def exists(self):
+        return self.node_id > 0
 
     @property
     def locked(self) -> int:
@@ -224,8 +196,6 @@ class Wallet:
 
     @node_id.setter
     def node_id(self, value):
-        # if self.node_id != 0 and value != 0:
-        #     revert("LiquidICX: The node id was already set.")
         self._node_id.set(value)
 
     @property

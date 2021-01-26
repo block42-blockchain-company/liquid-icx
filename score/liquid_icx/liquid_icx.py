@@ -323,8 +323,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         Claim IScore rewards. It is called only once per term, at the start of the cycle.
         """
-        self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
-        self._system_score.claimIScore()
+        self._rewards.set(0)
+        # self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
+        # self._system_score.claimIScore()
         self._distributing.set(True)
 
     def _redelegate(self):
@@ -419,7 +420,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LIquidICX: Delegation can not be None")
 
         wallet = Wallet(self.db, sender)
-        if len(wallet.delegation_address) > 0:
+        if wallet.hasVotingPower():
             # remove previous delegations
             sum_undelegated = 0
             while len(wallet.delegation_address) != 0:
@@ -473,8 +474,39 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if _to == ZERO_WALLET_ADDRESS:
             revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
-        sender.send(_value, self)
-        receiver.receive(_value, self)
+        # subtract proportionally from sender delegations and remove from _wallets list if ...
+        for deleg, prep_address in zip(sender.delegation_value, sender.delegation_address):
+            basis_point = Utils.calcBPS(deleg, self._balances[_from])
+            subtract = int((_value * basis_point) / 10000)
+            deleg -= subtract
+            self.delegation[prep_address] -= subtract
+            if self.delegation[prep_address] < 0:
+                Utils.remove_from_array(self.delegation_keys, prep_address)
+
+        self._balances[_from] = self._balances[_from] - _value
+        if sender.exists() and self._balances[_from] < self._min_value_to_get_rewards.get() and sender.locked == 0:
+            self._wallets.remove(sender.node_id)
+            sender.node_id = 0
+
+        # receive
+        if receiver.hasVotingPower():
+            for deleg, prep_address in zip(receiver.delegation_value, receiver.delegation_address):
+                basis_point = Utils.calcBPS(deleg, self._balances[_to])
+                add = int((_value * basis_point) / 10000)
+                deleg += add
+                self.delegation[prep_address] += add
+        else:
+            for i in self.delegation_keys:
+                basis_point = Utils.calcBPS(self.delegation[i], self._total_supply.get())
+                value = int((_value * basis_point) / 10000)
+                receiver.delegation_value.put(value)
+                receiver.delegation_address.put(self.delegation_keys[i])
+                self.delegation[i] += value
+
+        self._balances[_to] = self._balances[_to] + _value
+        if not receiver.exists() and self._balances[_to] >= self._min_value_to_get_rewards.get():
+            node_id = self._wallets.append(str(_to))
+            receiver.node_id = node_id
 
         if _to.is_contract:
             recipient_score = self.create_interface_score(_to, TokenFallbackInterface)
