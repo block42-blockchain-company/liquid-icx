@@ -31,7 +31,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def Claim(self):
         pass
 
-    # ================================================
+    @eventlog(indexed=0)
+    def Vote(self):
+        pass
+
+        # ================================================
+
     #  Initialization
     # ================================================
     def __init__(self, db: IconScoreDatabase) -> None:
@@ -264,10 +269,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         update the total_supply of LICX. After that all the variables used are being reset (set to default state).
         This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
         """
-
         if not len(self._wallets):
             revert("LiquidICX: No wallets joined yet.")
-
         if self._last_distributed_height.get() < self._system_score.getPRepTerm()["startBlockHeight"]:
             if not self._rewards.get():
                 self._claimRewards()
@@ -383,21 +386,33 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._delegate()
         self.Join(sender, amount)
 
-    def _leave(self, _account: Address, _value: int):
+    def _leave(self, sender: Address, _value: int):
         """
         Internal method, which adds a leave request to a specific address.
         Requests are then later resolved in distribute cycle, once per term.
-        :param _account: Address, which is requesting leave.
+        :param sender: Address, which is requesting leave.
         :param _value: Amount of LICX for a leave request
         """
 
         if _value < self._min_value_to_get_rewards.get():
             revert(f"LiquidICX: Leaving value cannot be less than {self._min_value_to_get_rewards.get()}.")
-        if self._balances[_account] < _value:
+        if self._balances[sender] < _value:
             revert("LiquidICX: Out of balance.")
 
-        Wallet(self.db, _account).requestLeave(_value)
-        self.LeaveRequest(_account, _value)
+        wallet = Wallet(self.db, sender)
+        wallet.requestLeave(_value)
+
+        # subtract proportionally
+        for deleg, prep_address in zip(wallet.delegation_value, wallet.delegation_address):
+            basis_point = Utils.calcBPS(deleg, self._balances[sender])
+            subtract = int((_value * basis_point) / 10000)
+            deleg -= subtract
+            self.delegation[prep_address] -= subtract
+            if self.delegation[prep_address] < 0:
+                Utils.remove_from_array(self.delegation_keys, prep_address)
+
+        self._delegate()
+        self.LeaveRequest(sender, _value)
 
     def _vote(self, sender: Address, delegation: dict):
         if delegation is None:
@@ -418,6 +433,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             # add new delegations
             sum_delegated = 0
             for address, value in delegation.items():
+                # TODO check if address is a prep
                 prep_address: Address = Address.from_string(address)
                 if prep_address in self.delegation:
                     self.delegation[prep_address] += value
@@ -431,7 +447,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             if sum_undelegated != sum_delegated:
                 revert("LiquidICX: New total delegation should match with the previous total delegation.")
             self._delegate()
-            # TODO: Should we add a Vote() event
+            self.Vote()
         else:
             revert("LiquidICX: You do not have any voting power.")
 
@@ -464,16 +480,22 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             recipient_score = self.create_interface_score(_to, TokenFallbackInterface)
             recipient_score.tokenFallback(_from, _value, _data)
 
-        self._delegate()
+        self._delegate(stake=False)
         self.Transfer(_from, _to, _value, _data)
 
-    def _delegate(self):
+    def _delegate(self, stake=True):
         delegations = []
+        stake_sum = 0
+
         for address in self.delegation_keys:
             delegations.append({
                 "address": address,
                 "value": self.delegation[address]
             })
+            stake_sum += self.delegation[address]
+
+        if stake:
+            self._system_score.setStake(stake_sum)
         self._system_score.setDelegation(delegations)
 
     @payable
