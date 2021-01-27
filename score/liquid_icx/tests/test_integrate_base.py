@@ -181,6 +181,16 @@ class LICXTestBase(IconIntegrateTestBase):
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         return tx_result
 
+    def _stop(self):
+        tx = self._build_transaction(method="stop", from_=self._wallet.get_address())
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        return tx_result
+
+    def _withdraw(self):
+        tx = self._build_transaction(method="withdraw", from_=self._wallet.get_address())
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        return tx_result
+
     def _distribute(self):
         tx = self._build_transaction(method="distribute", margin=100000000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)

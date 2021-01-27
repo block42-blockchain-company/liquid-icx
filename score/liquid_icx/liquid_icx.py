@@ -160,6 +160,22 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
 
     @external
+    def stop(self):
+        if self.msg.sender != self.owner:
+            revert("LiquidICX: Only owner function at current state.")
+
+        self._system_score.setDelegation([])
+        self._system_score.setStake(0)
+
+    @external
+    def withdraw(self):
+        if self.msg.sender != self.owner:
+            revert("LiquidICX: Only owner function at current state.")
+
+        self.icx.send(self.owner, self.icx.get_balance(self.address))
+
+
+    @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:
         """
         External entry function to send LICX from one wallet to another
@@ -208,7 +224,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         External entry point to join the LICX pool
         """
-
+        revert("LiquidICX: Outdated contract.")
         if self.msg.value < self._min_value_to_get_rewards.get():
             revert("LiquidICX: Joining value cannot be less than the minimum join value")
 
@@ -222,6 +238,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         External entry point to leave the LICX pool
         """
+        revert("LiquidICX: Outdated contract.")
         if _value is None:
             _value = self._balances[self.msg.sender]
 
@@ -232,6 +249,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         External entry point to claim ICX
         """
+        revert("LiquidICX: Outdated contract.")
         wallet = Wallet(self.db, self.msg.sender)
         claim_amount = wallet.claim()
 
@@ -253,7 +271,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         update the total_supply of LICX. After that all the variables used are being reset (set to default state).
         This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
         """
-
+        revert("LiquidICX: Outdated contract.")
         if not len(self._wallets):
             revert("LiquidICX: No wallets joined yet.")
 
