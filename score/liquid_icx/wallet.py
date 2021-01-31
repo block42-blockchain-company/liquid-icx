@@ -5,7 +5,6 @@ class Wallet:
     __sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
     def __init__(self, db: IconScoreDatabase, _address: Address):
-        self.__address: Address = _address
         self._locked = VarDB("locked_" + str(_address), db, value_type=int)
         self._unstaking = VarDB("unstaking_" + str(_address), db, value_type=int)
 
@@ -42,8 +41,6 @@ class Wallet:
         self.locked = self.locked + join_amount
 
         delegation_amount_sum = 0
-        prep_list: list = self.__sys_score.getMainPReps()["preps"]
-        prep_list.extend(self.__sys_score.getSubPReps()["preps"])
         for address, value in delegation.items():
             prep_address: Address = Address.from_string(address)
             if prep_address in self._delegation_address:
@@ -53,7 +50,7 @@ class Wallet:
             else:
                 if prep_address in licx.delegation_keys:
                     licx.delegation[prep_address] += value
-                elif not any(prep['address'] == prep_address for prep in prep_list):
+                elif not Utils.isPrep(licx.db, prep_address):
                     revert("LiquidICX: Given address is not a P-Rep.")
                 else:
                     licx.delegation_keys.put(prep_address)
@@ -103,7 +100,6 @@ class Wallet:
         unlocked = 0
         if self.locked > 0:
             next_term = self.__sys_score.getIISSInfo()["nextPRepTerm"]
-            Logger.info(f"Next term: {next_term}, {next_term > self._unlock_heights[0]}")
             while self._unlock_heights:
                 if next_term > self._unlock_heights[0]:  # always check and remove the first element only
                     self.locked = self.locked - self._join_values[0]
@@ -141,16 +137,6 @@ class Wallet:
             delegation_value = int((reward * basis_point) / 10000)
             self._delegation_value[i] += delegation_value
             delegations[Address.from_string(self._delegation_address[i])] += delegation_value
-
-    @property
-    def delegations(self) -> list:
-        delegations = []
-        for it in range(len(self.delegation_address)):
-            delegations.append({
-                "address": Address.from_string(self.delegation_address[it]),
-                "value": self.delegation_value[it]
-            })
-        return delegations
 
     def hasVotingPower(self) -> bool:
         return len(self.delegation_address) > 0
