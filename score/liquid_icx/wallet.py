@@ -5,6 +5,7 @@ class Wallet:
     __sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
     def __init__(self, db: IconScoreDatabase, _address: Address):
+        self._address = _address
         self._locked = VarDB("locked_" + str(_address), db, value_type=int)
         self._unstaking = VarDB("unstaking_" + str(_address), db, value_type=int)
 
@@ -74,10 +75,15 @@ class Wallet:
         self._leave_values.put(_leave_amount)
         self.unstaking = self.unstaking + _leave_amount
 
-    def leave(self) -> int:
+    def leave(self, licx: IconScoreBase) -> int:
         """
-        Resolves a leave request.
-        It adds an unstaking period for all un-resolved leave requests.
+        Function resolves a leave request.
+        It sum up the value and adds an unstaking period of all un-resolve leave requests.
+
+        The sum of leaving values is proportionally subtracted from all delegated addresses.
+        Let's assume, that sender is delegating 123 ICX(35,76%) to prep_1 and 221 ICX(64,24%) to prep_2.
+        User leaving with 150 ICX means, that 53,64 ICX will be subtracted from prep_1 and 96,36 ICX from prep_2.
+
         :return: Sum of newly resolved leave requests
         """
 
@@ -85,10 +91,24 @@ class Wallet:
         if len(self._leave_values) != len(self._unstake_heights):
             current_height = self.__sys_score.getIISSInfo()["blockHeight"]
             unstake_period = self.__sys_score.estimateUnstakeLockPeriod()["unstakeLockPeriod"]
-
+            # add unstaking period
             for it in range(len(self._unstake_heights), len(self._leave_values)):
-                leave_amount = leave_amount + self._leave_values[it]
+                leave_amount += self._leave_values[it]
                 self._unstake_heights.put(current_height + unstake_period + UNSTAKING_MARGIN)
+
+            # subtract proportionally and update
+            for i in range(len(self._delegation_address)):
+                basis_point = Utils.calcBPS(self.delegation_value[i], self._balances[self._address])
+                subtract = int((leave_amount * basis_point) / 10000)
+                self.delegation_value[i] -= subtract
+                licx.delegation[self.delegation_address[i]] -= subtract
+                if self.delegation_value[i] <= 0:
+                    Utils.remove_from_array(self.delegation_address, self.delegation_address[i])
+                    Utils.remove_from_array(self.delegation_value, self.delegation_value[i])
+                if licx.delegation[self.delegation_address[i]] <= 0:
+                    Utils.remove_from_array(licx.delegation_keys, self.delegation_address[i])
+
+
         return leave_amount
 
     def unlock(self) -> int:

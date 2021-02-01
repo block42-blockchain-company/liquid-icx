@@ -4,7 +4,10 @@ import fileinput
 import time
 from asyncio import sleep
 
+from iconsdk.icon_service import IconService
+from iconsdk.providers.http_provider import HTTPProvider
 from iconsdk.signed_transaction import SignedTransaction
+from iconsdk.wallet.wallet import KeyWallet
 from iconservice.icon_constant import GOVERNANCE_ADDRESS
 from tbears.libs.icon_integrate_test import SCORE_INSTALL_ADDRESS
 
@@ -151,7 +154,7 @@ class LiquidICXTest(LICXTestBase):
         self._join()
         self.assertEqual(len(self._get_wallets()), 2, msg=pp.pformat(self._get_wallets()))
 
-    def test_4_join_with_custom_preps(self):
+    def test_4_join_with_custom_preps_and_vote(self):
         """
         1. Join with 20 ICX, vote for two different preps with 10 ICX each and perform basic checks
         2. Second join with additional 10 ICX, which are delegated to first prep in list
@@ -250,7 +253,6 @@ class LiquidICXTest(LICXTestBase):
         owner = self._get_wallet()
         while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
             time.sleep(2)
-        # reward_icx = int(self._queryIScore()["estimatedICX"], 16)
         tx_distribute = self._distribute()
         self.assertEqual(tx_distribute["status"], 1, msg=pp.pformat(tx_distribute))
         # 6 transfer 10 LICX from wallet1 to wallet 2
@@ -258,31 +260,15 @@ class LiquidICXTest(LICXTestBase):
         self.assertTrue(tx_transfer["status"], msg=pp.pformat(tx_transfer))
         self.assertEqual(hex(0), self._balance_of(self._wallet.get_address()))
         self.assertEqual(hex(11 * delegation_value), self._balance_of(self._wallet2.get_address()))
-        user_wallet = self._get_wallet(self._wallet2.get_address())
-        self.assertEqual(self.prep_list[0], user_wallet["delegation_addr"][0], msg=pp.pformat(user_wallet))
-        self.assertEqual(self.prep_list[1], user_wallet["delegation_addr"][1], msg=pp.pformat(user_wallet))
-        self.assertEqual(self.prep_list[2], user_wallet["delegation_addr"][2], msg=pp.pformat(user_wallet))
-        self.assertEqual(hex(int(delegation_value + delegation_value * 0.1)), user_wallet["delegation_values"][0], msg=pp.pformat(user_wallet))
-        self.assertEqual(hex(int(5 * delegation_value + delegation_value * 0.5)), user_wallet["delegation_values"][1], msg=pp.pformat(user_wallet))
-        self.assertEqual(hex(int(4 * delegation_value + delegation_value * 0.4)), user_wallet["delegation_values"][2], msg=pp.pformat(user_wallet))
+        receiver = self._get_wallet(self._wallet2.get_address())
+        self.assertEqual(self.prep_list[0], receiver["delegation_addr"][0], msg=pp.pformat(receiver))
+        self.assertEqual(self.prep_list[1], receiver["delegation_addr"][1], msg=pp.pformat(receiver))
+        self.assertEqual(self.prep_list[2], receiver["delegation_addr"][2], msg=pp.pformat(receiver))
+        self.assertEqual(hex(int(delegation_value + delegation_value * 0.1)), receiver["delegation_values"][0], msg=pp.pformat(receiver))
+        self.assertEqual(hex(int(5 * delegation_value + delegation_value * 0.5)), receiver["delegation_values"][1], msg=pp.pformat(receiver))
+        self.assertEqual(hex(int(4 * delegation_value + delegation_value * 0.4)), receiver["delegation_values"][2], msg=pp.pformat(receiver))
         delegation = self._get_delegation()
         self.assertEqual(hex(11 * delegation_value), delegation["totalDelegated"], msg=delegation)
         self.assertEqual(hex(int(1.1 * delegation_value)), delegation["delegations"][0]["value"], msg=delegation)
         self.assertEqual(hex(int(5.5 * delegation_value)), delegation["delegations"][1]["value"], msg=delegation)
         self.assertEqual(hex(int(4.4 * delegation_value)), delegation["delegations"][2]["value"], msg=delegation)
-
-        # owner = self._get_wallet()
-        # self.assertEqual(owner["locked"], hex(0), msg=pp.pformat(owner))
-        # self.assertEqual(len(owner["join_values"]), 0, msg=pp.pformat(owner))
-        # self.assertEqual(len(owner["unlock_heights"]), 0, msg=pp.pformat(owner))
-        # delegations = self._get_delegation()["delegations"]
-        # pp.pprint(delegations)
-        # self.assertEqual(int((delegation_value * 2) + reward_icx * 0.2), int(delegations[0]["value"], 16),
-        #                  msg=pp.pformat(delegations))
-        # self.assertEqual(delegations[0]["address"], self.prep_list[0], msg=pp.pformat(delegations))
-        # self.assertEqual(int((delegation_value * 5) + reward_icx * 0.5), int(delegations[1]["value"], 16),
-        #                  msg=pp.pformat(delegations))
-        # self.assertEqual(delegations[1]["address"], self.prep_list[1], msg=pp.pformat(delegations))
-        # self.assertEqual(int((delegation_value * 3) + reward_icx * 0.3), int(delegations[2]["value"], 16),
-        #                  msg=pp.pformat(delegations))
-        # self.assertEqual(delegations[2]["address"], self.prep_list[2], msg=pp.pformat(delegations))

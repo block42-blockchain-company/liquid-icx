@@ -286,7 +286,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                         wallet.calcDistributeDelegations(wallet_rewards, wallet_balance, self.delegation)
 
                     wallet_unlocked = wallet.unlock()
-                    wallet_leave = wallet.leave()
+                    wallet_leave = wallet.leave(self)
 
                     self._balances[curr_address] = self._balances[curr_address] + \
                                                    wallet_unlocked + \
@@ -387,11 +387,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def _leave(self, sender: Address, _value: int):
         """
         Internal method, which adds a leave request to a specific address.
-
-        The leaving value is proportionally subtracted from all delegated addresses.
-        Let's assume, that sender is delegating 123 ICX(35,76%) to prep_1 and 221 ICX(64,24%) to prep_2.
-        User leaving with 150 ICX means, that 53,64 ICX will be subtracted from prep_1 and 96,36 ICX from prep_2.
-
         Requests are then later resolved in distribute cycle, once per term.
         :param sender: Address, which is requesting leave.
         :param _value: Amount of LICX for a leave request
@@ -405,20 +400,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         wallet = Wallet(self.db, sender)
         wallet.requestLeave(_value)
 
-        # subtract proportionally
-        for i in range(len(wallet.delegation_value)):
-            basis_point = Utils.calcBPS(wallet.delegation_value[i], self._balances[sender])
-            subtract = int((_value * basis_point) / 10000)
-            wallet.delegation_value[i] -= subtract
-            self.delegation[wallet.delegation_address[i]] -= subtract
-            # remove from prep_address from self.delegation_keys and remove from wallet.delegation_value/delegation_addr
-            if self.delegation[wallet.delegation_address[i]] <= 0:
-                Utils.remove_from_array(self.delegation_keys, wallet.delegation_address[i])
-            if wallet.delegation_value[i] <= 0:
-                Utils.remove_from_array(wallet.delegation_address, wallet.delegation_address[i])
-                Utils.remove_from_array(wallet.delegation_value, wallet.delegation_value[i])
-
-        # self._delegate()
         self.LeaveRequest(sender, _value)
 
     def _vote(self, sender: Address, delegation: dict):
