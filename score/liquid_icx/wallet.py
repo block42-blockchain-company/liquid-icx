@@ -78,7 +78,7 @@ class Wallet:
     def leave(self, licx: IconScoreBase) -> int:
         """
         Function resolves a leave request.
-        It sum up the value and adds an unstaking period of all un-resolve leave requests.
+        It sum up the value and adds an unstaking period of all un-resolved leave requests.
 
         The sum of leaving values is proportionally subtracted from all delegated addresses.
         Let's assume, that sender is delegating 123 ICX(35,76%) to prep_1 and 221 ICX(64,24%) to prep_2.
