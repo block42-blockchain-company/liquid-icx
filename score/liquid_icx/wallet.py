@@ -96,18 +96,7 @@ class Wallet:
                 leave_amount += self._leave_values[it]
                 self._unstake_heights.put(current_height + unstake_period + UNSTAKING_MARGIN)
 
-            # subtract proportionally and update
-            for i in range(len(self._delegation_address)):
-                basis_point = Utils.calcBPS(self.delegation_value[i], licx._balances[self._address])
-                subtract = int((leave_amount * basis_point) / 10000)
-                self.delegation_value[i] -= subtract
-                licx._delegation[self.delegation_address[i]] -= subtract
-                if self.delegation_value[i] <= 0:
-                    Utils.remove_from_array(self.delegation_address, self.delegation_address[i])
-                    Utils.remove_from_array(self.delegation_value, self.delegation_value[i])
-                if licx._delegation[self.delegation_address[i]] <= 0:
-                    Utils.remove_from_array(licx._delegation_keys, self.delegation_address[i])
-
+            self.subtractDelegationsProportionally(licx, leave_amount)
 
         return leave_amount
 
@@ -150,6 +139,21 @@ class Wallet:
                 else:
                     break
         return claim_amount
+
+    def subtractDelegationsProportionallyToWallet(self, licx: IconScoreBase, amount: int):
+        for i in range(len(self._delegation_address)):
+
+            basis_point = Utils.calcBPS(self.delegation_value[i], licx._balances[self._address])
+            subtract = int((amount * basis_point) / 10000)
+
+            self.delegation_value[i] -= subtract
+            licx._delegation[self.delegation_address[i]] -= subtract
+
+            if self.delegation_value[i] <= 0:
+                Utils.remove_from_array(self.delegation_address, self.delegation_address[i])
+                Utils.remove_from_array(self.delegation_value, self.delegation_value[i])
+            if licx._delegation[self.delegation_address[i]] <= 0:
+                Utils.remove_from_array(licx._delegation_keys, self.delegation_address[i])
 
     def calcDistributeDelegations(self, reward: int, balance: int, delegations: DictDB):
         for i in range(len(self._delegation_address)):
@@ -223,3 +227,7 @@ class Wallet:
             "delegation_addr": list(self.delegation_address),
             "delegation_values": list(self._delegation_value),
         }
+
+    @property
+    def address(self):
+        return self._address

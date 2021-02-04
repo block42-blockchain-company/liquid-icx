@@ -173,8 +173,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         :param _data: Optional information for transfer Event
         """
 
+        if self._distributing.get():
+            revert("LiquidICX: Can not transfer while distribute cycle.")
+        if _value < 0:
+            revert("LiquidICX: Transferring value cannot be less than zero.")
+        if _to == ZERO_WALLET_ADDRESS:
+            revert("LiquidICX: Can not transfer LICX to zero wallet address.")
+
         if _data is None:
             _data = b'None'
+
         self._transfer(self.msg.sender, _to, _value, _data)
 
     @external
@@ -260,13 +268,16 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
                 revert("LiquidICX: Could not send ICX to the given address.")
 
     @external
-    def vote(self, delegation: str):
+    def vote(self, _delegation: str):
         """
         External entry point to change a wallet's current delegation
         :param delegation: list of preps a user wants to vote for in string JSON format
         """
+        delegation = json_loads(_delegation)
+        if delegation is None:
+            revert("LIquidICX: Delegation can not be None")
 
-        self._vote(self.msg.sender, json_loads(delegation))
+        self._vote(self.msg.sender, delegation)
 
     @external
     def distribute(self):
@@ -293,7 +304,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     #  Internal methods
     # ================================================
 
-    def _join(self, sender: Address, amount: int, delegation: dict) -> None:
+    def _join(self, _sender: Address, _amount: int, _delegation: dict) -> None:
         """
         Add a wallet to the LICX pool and issue LICX to it.
         If user passes delegation to entry point function, it will delegate to this specific preps,
@@ -304,26 +315,17 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
 
         # Create wallet object and append to linked list if first time joining
-        wallet = Wallet(self.db, sender)
+        wallet = Wallet(self.db, _sender)
         if not wallet.exists():
-            wallet.node_id = self._wallets.append(str(sender))
+            wallet.node_id = self._wallets.append(str(_sender))
 
-        if delegation is None:
-            # proportional divide user's join amount between the current delegating preps
-            delegation = {}
-            delegations: dict = self.getDelegation()
-            if len(delegations["delegations"]) != 0:
-                for it in delegations["delegations"]:
-                    basis_point = Utils.calcBPS(it["value"], delegations["totalDelegated"])
-                    delegation_value = int((amount * basis_point) / 10000)
-                    delegation[str(it["address"])] = delegation_value
-            else:
-                delegation[str(PREP_ADDRESS)] = amount
+        if _delegation is None:
+            self._getDelegationDictProportionalToSCORE(_amount)
 
-        wallet.join(amount, delegation, self)
-        self._system_score.setStake(self.getStaked() + amount)
+        wallet.join(_amount, _delegation, self)
+        self._system_score.setStake(self.getStaked() + _amount)
         self._delegate()
-        self.Join(sender, amount)
+        self.Join(_sender, _amount)
 
     def _leave(self, sender: Address, _value: int):
         """
@@ -343,7 +345,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self.LeaveRequest(sender, _value)
 
-    def _vote(self, sender: Address, delegation: dict):
+    def _vote(self, _sender: Address, _delegations: dict):
         """
         Internal method, which allows user to change delegation.
         It removes all previous delegations from wallet object and adds the new delegation, that user passed
@@ -353,43 +355,18 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         :param delegation: new delegations dictionary
         """
 
-        if delegation is None:
-            revert("LIquidICX: Delegation can not be None")
-
-        wallet = Wallet(self.db, sender)
-        if wallet.hasVotingPower():
-            # remove previous delegations
-            sum_undelegated = 0
-            while len(wallet.delegation_address) != 0:
-                prep_address = wallet.delegation_address.pop()
-                deleg = wallet.delegation_value.pop()
-                self._delegation[prep_address] -= deleg
-                sum_undelegated += deleg
-                if self._delegation[prep_address] <= 0:
-                    Utils.remove_from_array(self._delegation_keys, prep_address)
-
-            # add new delegations
-            sum_delegated = 0
-            for address, value in delegation.items():
-                prep_address: Address = Address.from_string(address)
-                if prep_address in self._delegation:
-                    self._delegation[prep_address] += value
-                elif not Utils.isPrep(self.db, prep_address):
-                    revert("LiquidICX: Given address is not a P-Rep.")
-                else:
-                    self._delegation[prep_address] = value
-                    self._delegation_keys.put(prep_address)
-                wallet.delegation_value.put(value)
-                wallet.delegation_address.put(prep_address)
-                sum_delegated += value
-
-            if sum_undelegated != sum_delegated:
-                revert("LiquidICX: New total delegation should match with the previous total delegation.")
-
-            self._delegate()
-            self.Vote(sender)
-        else:
+        wallet = Wallet(self.db, _sender)
+        if not wallet.hasVotingPower():
             revert("LiquidICX: You do not have any voting power.")
+
+        sum_undelegated = self._removeDelegations(wallet)
+        sum_delegated = self._addAbsoluteDelegations(wallet, _delegations)
+
+        if sum_undelegated != sum_delegated:
+            revert("LiquidICX: New total delegation should match with the previous total delegation.")
+
+        self._delegate()
+        self.Vote(_sender)
 
     def _transfer(self, _from: Address, _to: Address, _value: int, _data: bytes):
         """
@@ -404,48 +381,20 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         receiver = Wallet(self.db, _to)
 
         # Checks the sending value and balance.
-        if self._distributing.get():
-            revert("LiquidICX: Can not transfer while distribute cycle.")
-        if _value < 0:
-            revert("LiquidICX: Transferring value cannot be less than zero.")
         if self._balances[_from] - sender.unstaking < _value:
             revert("LiquidICX: Out of balance.")
-        if _to == ZERO_WALLET_ADDRESS:
-            revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
-        # subtract proportionally from sender delegations and remove from _wallets list if ...
-        for i in range(len(sender.delegation_value)):
-            basis_point = Utils.calcBPS(sender.delegation_value[i], self._balances[_from])
-            subtract = int((_value * basis_point) / 10000)
-            sender.delegation_value[i] -= subtract
-            self._delegation[sender.delegation_address[i]] -= subtract
-            # remove from prep_address from self._delegation_keys and remove from wallet.delegation_value/delegation_addr
-            if self._delegation[sender.delegation_address[i]] <= 0:
-                Utils.remove_from_array(self._delegation_keys, sender.delegation_address[i])
-            if sender.delegation_value[i] <= 0:
-                Utils.remove_from_array(sender.delegation_address, sender.delegation_address[i])
-                Utils.remove_from_array(sender.delegation_value, sender.delegation_value[i])
+        sender.subtractDelegationsProportionallyToWallet(self, _value)
 
         self._balances[_from] = self._balances[_from] - _value
-        if sender.exists() and self._balances[_from] < self._min_value_to_get_rewards.get() and sender.locked == 0:
-            self._wallets.remove(sender.node_id)
-            sender.node_id = 0
+        self._check_wallet_has_enough_funds(sender)
 
         # receiver has already voting power, add to existing one, otherwise proportionally divide between all
         # delegated preps
         if receiver.hasVotingPower():
-            for i in range(len(receiver.delegation_value)):
-                basis_point = Utils.calcBPS(receiver.delegation_value[i], self._balances[_to])
-                addend = int((_value * basis_point) / 10000)
-                receiver.delegation_value[i] += addend
-                self._delegation[receiver.delegation_address[i]] += addend
+            self._addDelegationsProportionallyToWallet(receiver,_value)
         else:
-            for i in self._delegation_keys:
-                basis_point = Utils.calcBPS(self._delegation[i], self._total_supply.get())
-                value = int((_value * basis_point) / 10000)
-                receiver.delegation_value.put(value)
-                receiver.delegation_address.put(self._delegation_keys[i])
-                self._delegation[i] += value
+            self._addDelegationsProportionallyToSCORE(receiver, _value)
 
         self._balances[_to] = self._balances[_to] + _value
         if not receiver.exists() and self._balances[_to] >= self._min_value_to_get_rewards.get():
@@ -464,7 +413,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Distribute I-Score rewards once per term.
         Iterate over all wallets >= self._min_value_to_get_rewards and give them their reward share.
 
-        When the last wallet in the linked list is being processed summed up values are being used to redelegate and to
+        When the last wallet in the linked list is being processed, the summed up values are being used to redelegate and to
         update the total_supply of LICX. After that all the variables used are being reset (set to default state).
         This function has to be called multiple times until we iterated over all wallets >= self._min_value_to_get_rewards.
         """
@@ -475,7 +424,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         i = 0
         # current_linked_list_id becomes negative when we reached the end of the linked list
         while i < self._iteration_limit.get() and current_linked_list_id >= 0:
-            self._distribute_one_wallet(current_linked_list_id)
+            self._distributeOneWallet(current_linked_list_id)
             current_linked_list_id = self._getNextLinkedListId(current_linked_list_id)
             i += 1
 
@@ -562,7 +511,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             self._claimRewards()
             self._current_distribute_linked_list_id.set(self._wallets.get_head_node().id)  # get head id for start iteration
 
-    def _distribute_one_wallet(self, _linked_list_id) -> None:
+    def _distributeOneWallet(self, _linked_list_id) -> None:
         """
         Perform the distribution steps for the wallet with the ID of _linked_list_id.
         First reward calculation is done.
@@ -606,3 +555,84 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         except StopIteration:
             return -1
         return next_id
+
+    def _removeDelegations(self, _wallet: Wallet) -> int:
+        """
+        Remove all delegations from a wallet
+        Return the sum of all removed delegations
+        """
+
+        sum_undelegated = 0
+        while len(_wallet.delegation_address) != 0:
+            prep_address = _wallet.delegation_address.pop()
+            deleg = _wallet.delegation_value.pop()
+            self._delegation[prep_address] -= deleg
+            sum_undelegated += deleg
+            if self._delegation[prep_address] <= 0:
+                Utils.remove_from_array(self._delegation_keys, prep_address)
+
+        return sum_undelegated
+
+    def _addAbsoluteDelegations(self, _wallet: Wallet, _delegations: dict):
+        """
+        Add delegations to a wallet
+        Return the sum all added delegations
+        """
+
+        sum_delegated = 0
+        for address, value in _delegations.items():
+            prep_address: Address = Address.from_string(address)
+
+            if prep_address in self._delegation:
+                self._delegation[prep_address] += value
+            elif not Utils.isPrep(self.db, prep_address):
+                revert("LiquidICX: Given address is not a P-Rep.")
+            else:
+                self._delegation[prep_address] = value
+                self._delegation_keys.put(prep_address)
+
+            _wallet.delegation_value.put(value)
+            _wallet.delegation_address.put(prep_address)
+            sum_delegated += value
+
+        return sum_delegated
+
+    def _addDelegationsProportionallyToWallet(self, _wallet: Wallet, _value: int):
+        for i in range(len(_wallet.delegation_value)):
+            basis_point = Utils.calcBPS(_wallet.delegation_value[i], self._balances[_wallet.address])
+            additional_delegation = int((_value * basis_point) / 10000)
+
+            _wallet.delegation_value[i] += additional_delegation
+            self._delegation[_wallet.delegation_address[i]] += additional_delegation
+
+    def _addDelegationsProportionallyToSCORE(self, _wallet: Wallet, _value: int):
+        delegations = self._getDelegationDictProportionalToSCORE(_value)
+
+        for address, value in delegations.items():
+            prep_address: Address = Address.from_string(address)
+            _wallet.delegation_value.put(value)
+            _wallet.delegation_address.put(prep_address)
+            self._delegation[prep_address] += value
+
+    def _getDelegationDictProportionalToSCORE(self, _total_voting_amount: int) -> dict:
+        """
+        Return a dict that has the SCORE delegations downscaled to an amount
+        :param _total_voting_amount: amount to downscale the SCORE delegations to
+        """
+
+        proportional_delegations = {}
+        if len(self._delegation_keys) != 0:
+            for i in self._delegation_keys:
+                basis_point = Utils.calcBPS(self._delegation[i], self._total_supply.get())
+                delegation_value = int((_total_voting_amount * basis_point) / 10000)
+                proportional_delegations[str(self._delegation_keys[i])] = delegation_value
+        else:
+            proportional_delegations[str(PREP_ADDRESS)] = _total_voting_amount
+
+        return proportional_delegations
+
+    def _check_wallet_has_enough_funds(self, _wallet: Wallet):
+        if _wallet.exists() and self._balances[_wallet.address] < self._min_value_to_get_rewards.get() \
+                and _wallet.locked == 0:
+            self._wallets.remove(_wallet.node_id)
+            _wallet.node_id = 0
