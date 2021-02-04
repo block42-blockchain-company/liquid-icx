@@ -98,7 +98,7 @@ class Wallet:
 
             # subtract proportionally and update
             for i in range(len(self._delegation_address)):
-                basis_point = Utils.calcBPS(self.delegation_value[i], self._balances[self._address])
+                basis_point = Utils.calcBPS(self.delegation_value[i], licx._balances[self._address])
                 subtract = int((leave_amount * basis_point) / 10000)
                 self.delegation_value[i] -= subtract
                 licx.delegation[self.delegation_address[i]] -= subtract
