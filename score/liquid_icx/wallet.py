@@ -47,15 +47,15 @@ class Wallet:
             if prep_address in self._delegation_address:
                 index = list(self._delegation_address).index(prep_address)
                 self._delegation_value[index] += value
-                licx.delegation[prep_address] += value
+                licx._delegation[prep_address] += value
             else:
-                if prep_address in licx.delegation_keys:
-                    licx.delegation[prep_address] += value
+                if prep_address in licx._delegation_keys:
+                    licx._delegation[prep_address] += value
                 elif not Utils.isPrep(licx.db, prep_address):
                     revert("LiquidICX: Given address is not a P-Rep.")
                 else:
-                    licx.delegation_keys.put(prep_address)
-                    licx.delegation[prep_address] = value
+                    licx._delegation_keys.put(prep_address)
+                    licx._delegation[prep_address] = value
                 self._delegation_address.put(prep_address)
                 self._delegation_value.put(value)
             delegation_amount_sum += value
@@ -78,7 +78,7 @@ class Wallet:
     def leave(self, licx: IconScoreBase) -> int:
         """
         Function resolves a leave request.
-        It sum up the value and adds an unstaking period of all un-resolve leave requests.
+        It sum up the value and adds an unstaking period of all un-resolved leave requests.
 
         The sum of leaving values is proportionally subtracted from all delegated addresses.
         Let's assume, that sender is delegating 123 ICX(35,76%) to prep_1 and 221 ICX(64,24%) to prep_2.
@@ -101,12 +101,12 @@ class Wallet:
                 basis_point = Utils.calcBPS(self.delegation_value[i], licx._balances[self._address])
                 subtract = int((leave_amount * basis_point) / 10000)
                 self.delegation_value[i] -= subtract
-                licx.delegation[self.delegation_address[i]] -= subtract
+                licx._delegation[self.delegation_address[i]] -= subtract
                 if self.delegation_value[i] <= 0:
                     Utils.remove_from_array(self.delegation_address, self.delegation_address[i])
                     Utils.remove_from_array(self.delegation_value, self.delegation_value[i])
-                if licx.delegation[self.delegation_address[i]] <= 0:
-                    Utils.remove_from_array(licx.delegation_keys, self.delegation_address[i])
+                if licx._delegation[self.delegation_address[i]] <= 0:
+                    Utils.remove_from_array(licx._delegation_keys, self.delegation_address[i])
 
 
         return leave_amount
