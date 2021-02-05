@@ -96,7 +96,7 @@ class Wallet:
                 leave_amount += self._leave_values[it]
                 self._unstake_heights.put(current_height + unstake_period + UNSTAKING_MARGIN)
 
-            self.subtractDelegationsProportionally(licx, leave_amount)
+            self.subtractDelegationsProportionallyToWallet(licx, leave_amount)
 
         return leave_amount
 
