@@ -202,7 +202,6 @@ class LiquidICXTest(LICXTestBase):
         delegation = {self.prep_list[3]: 22 * 10 ** 18}
         self._vote(self._wallet, delegation, condition=True)
 
-
     def test_5(self):
         """
         0. Wait till next term starts

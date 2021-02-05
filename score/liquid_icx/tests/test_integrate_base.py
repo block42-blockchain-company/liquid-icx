@@ -219,7 +219,7 @@ class LICXTestBase(IconIntegrateTestBase):
         value = value if value is not None else 10
         paras = {}
         if prep_list is not None:
-            paras = {"delegation": json.dumps(prep_list)}
+            paras = {"_delegation": json.dumps(prep_list)}
         tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address(), params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
         return tx_result
@@ -254,7 +254,7 @@ class LICXTestBase(IconIntegrateTestBase):
         return tx_result
 
     def _vote(self, from_: KeyWallet, delegation: dict, condition: bool = True):
-        paras = {"delegation": json.dumps(delegation)}
+        paras = {"_delegation": json.dumps(delegation)}
         tx = self._build_transaction(method="vote", from_=from_.get_address(), params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
         self.assertEqual(tx_result["status"], condition, msg=pp.pformat(tx_result))

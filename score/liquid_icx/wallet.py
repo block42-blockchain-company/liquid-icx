@@ -14,8 +14,8 @@ class Wallet:
         self._unlock_heights = ArrayDB("unlock_heights" + str(_address), db, value_type=int)
 
         # Presents with how much LICX user wants to leave in chronological order
-        self._leave_values = ArrayDB("leave_values" + str(_address), db, value_type=int)
-        self._unstake_heights = ArrayDB("unstake_heights" + str(_address), db, value_type=int)
+        self._leave_values = ArrayDB("leave_values_" + str(_address), db, value_type=int)
+        self._unstake_heights = ArrayDB("unstake_heights_" + str(_address), db, value_type=int)
 
         # Wallet ID in linked list
         self._node_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
@@ -142,18 +142,17 @@ class Wallet:
 
     def subtractDelegationsProportionallyToWallet(self, licx: IconScoreBase, amount: int):
         for i in range(len(self._delegation_address)):
-
             basis_point = Utils.calcBPS(self.delegation_value[i], licx._balances[self._address])
             subtract = int((amount * basis_point) / 10000)
 
             self.delegation_value[i] -= subtract
             licx._delegation[self.delegation_address[i]] -= subtract
 
+            if licx._delegation[self.delegation_address[i]] <= 0:
+                Utils.remove_from_array(licx._delegation_keys, self.delegation_address[i])
             if self.delegation_value[i] <= 0:
                 Utils.remove_from_array(self.delegation_address, self.delegation_address[i])
                 Utils.remove_from_array(self.delegation_value, self.delegation_value[i])
-            if licx._delegation[self.delegation_address[i]] <= 0:
-                Utils.remove_from_array(licx._delegation_keys, self.delegation_address[i])
 
     def calcDistributeDelegations(self, reward: int, balance: int, delegations: DictDB):
         for i in range(len(self._delegation_address)):

@@ -29,6 +29,16 @@ class Utils:
         return int((part * 10000) / base)
 
     @staticmethod
+    def calcValueProportionalToBasisPoint(value: int, basis_point: int) -> int:
+        """
+        Calculating a value proportional to the Basis point
+        :param value:
+        :param basis_point:
+        :return:
+        """
+        return int((value * basis_point) / 10000)
+
+    @staticmethod
     def isPrep(db: IconScoreDatabase, address: Address) -> bool:
         """
         Checks if the given address is either a sub or main prep.

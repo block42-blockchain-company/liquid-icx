@@ -226,7 +226,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     @payable
     @external
-    def join(self, delegation: str = None):
+    def join(self, _delegation: str = None):
         """
         External entry point to join the LICX pool
         :param delegation: list of preps a user wants to vote for in string JSON format
@@ -238,7 +238,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._cap.get() <= self.getStaked() + self.msg.value:
             revert("LiquidICX: Currently impossible to join the pool")
 
-        self._join(self.msg.sender, self.msg.value, json_loads(delegation))
+        self._join(self.msg.sender, self.msg.value, json_loads(_delegation))
 
     @external
     def leave(self, _value: int = None):
@@ -320,7 +320,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             wallet.node_id = self._wallets.append(str(_sender))
 
         if _delegation is None:
-            self._getDelegationDictProportionalToSCORE(_amount)
+            _delegation = self._getDelegationDictProportionalToSCORE(_amount)
 
         wallet.join(_amount, _delegation, self)
         self._system_score.setStake(self.getStaked() + _amount)
@@ -392,7 +392,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         # receiver has already voting power, add to existing one, otherwise proportionally divide between all
         # delegated preps
         if receiver.hasVotingPower():
-            self._addDelegationsProportionallyToWallet(receiver,_value)
+            self._addDelegationsProportionallyToWallet(receiver, _value)
         else:
             self._addDelegationsProportionallyToSCORE(receiver, _value)
 
@@ -442,6 +442,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         Claim IScore rewards. It is called only once per term, at the start of the cycle.
         """
+
         self._rewards.set(0)
         self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
         self._system_score.claimIScore()
@@ -451,8 +452,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         Re-stake and re-delegate with the rewards claimed at the start of the cycle.
         """
-        restake_value = self.getStaked() + self._rewards.get() - self._total_unstake_in_term.get()
-        if restake_value >= self.getStaked():
+
+        currently_staked = self.getStaked()
+        restake_value = currently_staked + self._rewards.get() - self._total_unstake_in_term.get()
+
+        if restake_value >= currently_staked:
             self._system_score.setStake(restake_value)
             self._delegate()
         else:
@@ -476,8 +480,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     def _delegate(self, stake=True):
         """
-        Iterates through internal delegation dictionary and builds up delegation list .
-        :param stake: If true the function also stakes new value, which is the sum of all delegations.
+        Iterates through internal delegation dictionary, builds up delegation list and delegates.
+        :param stake: If true the function stakes new value, which is the sum of all delegations.
         """
 
         delegations = []
@@ -491,7 +495,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             stake_sum += self._delegation[address]
 
         if stake:
-            self._system_score.setStake(stake_sum)
+            self._system_score.setStake(stake_sum)   # TODO move into separate function
         self._system_score.setDelegation(delegations)
 
     def _calculateWalletRewards(self, _wallet: Wallet, _address: Address) -> int:
@@ -616,16 +620,17 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
     def _getDelegationDictProportionalToSCORE(self, _total_voting_amount: int) -> dict:
         """
-        Return a dict that has the SCORE delegations downscaled to an amount
-        :param _total_voting_amount: amount to downscale the SCORE delegations to
+        Return a dict that has the SCORE delegations scaled to an amount
+        :param _total_voting_amount: amount that should get scaled to the SCORE delegations
         """
 
         proportional_delegations = {}
         if len(self._delegation_keys) != 0:
-            for i in self._delegation_keys:
-                basis_point = Utils.calcBPS(self._delegation[i], self._total_supply.get())
-                delegation_value = int((_total_voting_amount * basis_point) / 10000)
-                proportional_delegations[str(self._delegation_keys[i])] = delegation_value
+            score_delegations = self.getDelegation()
+            for it in score_delegations["delegations"]:
+                basis_point = Utils.calcBPS(it["value"], score_delegations["totalDelegated"])
+                delegation_value = Utils.calcValueProportionalToBasisPoint(_total_voting_amount, basis_point)
+                proportional_delegations[str(it["address"])] = delegation_value
         else:
             proportional_delegations[str(PREP_ADDRESS)] = _total_voting_amount
 
