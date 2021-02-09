@@ -214,7 +214,7 @@ class LICXTestBase(IconIntegrateTestBase):
     # -----------------------------------------------------------------------
     # ---------------------------- LICX methods -----------------------------
     # -----------------------------------------------------------------------
-    def _join(self, from_: KeyWallet = None, value: int = None, prep_list: dict = None):
+    def _join(self, from_: KeyWallet = None, value: int = None, prep_list: dict = None, condition: bool = True):
         wallet = from_ if from_ is not None else self._wallet
         value = value if value is not None else 10
         paras = {}
@@ -222,12 +222,13 @@ class LICXTestBase(IconIntegrateTestBase):
             paras = {"_delegation": json.dumps(prep_list)}
         tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address(), params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
+        self.assertEqual(condition, tx_result["status"], msg=pp.pformat(tx_result))
         return tx_result
 
-    def _distribute(self):
+    def _distribute(self, condition: bool = False):
         tx = self._build_transaction(method="distribute", margin=100000000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
-        # LiquidICXTest.pp.pprint(tx_result)
+        self.assertEqual(condition, tx_result["status"])
         return tx_result
 
     def _leave(self, from_: KeyWallet = None, value: int = None, condition: bool = True):
@@ -341,6 +342,18 @@ class LICXTestBase(IconIntegrateTestBase):
     def _get_total_unstaked_in_term(self):
         tx = self._build_transaction(method="getTotalUnstakeInTerm", type_="read")
         tx_result = self.process_call(tx, self._icon_service)
+        return tx_result
+
+    def _pause(self):
+        tx = self._build_transaction(method="pause", type_="write")
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertTrue(tx_result["status"])
+        return tx_result
+
+    def _unpause(self):
+        tx = self._build_transaction(method="unPause", type_="write")
+        tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
+        self.assertTrue(tx_result["status"])
         return tx_result
 
     # -----------------------------------------------------------------------

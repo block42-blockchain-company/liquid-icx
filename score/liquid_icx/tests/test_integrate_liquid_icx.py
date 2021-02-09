@@ -46,6 +46,8 @@ class LiquidICXTest(LICXTestBase):
         4. Try to send ICX directly to contract ( fallback function )
         """
         # 1
+        tx = self._pause()
+        pp.pprint(tx)
         self.assertEqual(self._get_wallets(), [])
         join_tx = self._join()
         self.assertEqual(len(self._get_wallets()), 1, msg=pp.pformat(join_tx))
@@ -75,6 +77,7 @@ class LiquidICXTest(LICXTestBase):
         """
         # 1
         self._join(value=12)
+
         self.assertEqual(len(self._get_wallets()), 1)
         self.assertEqual(self._balance_of(), hex(0), msg=self._balance_of())
         self.assertEqual(self._total_supply(), hex(0), msg=self._total_supply())
@@ -199,8 +202,11 @@ class LiquidICXTest(LICXTestBase):
         # 3
         delegation = {self.prep_list[3]: 50 * 10 ** 18}
         self._vote(self._wallet, delegation, condition=False)
+        delegation = {KeyWallet.create().get_address(): 22 * 10 ** 18}
+        self._vote(self._wallet, delegation, condition=False)
         delegation = {self.prep_list[3]: 22 * 10 ** 18}
         self._vote(self._wallet, delegation, condition=True)
+        next_term = self._getNextTermStart()
 
     def test_5(self):
         """
@@ -271,3 +277,29 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(hex(int(1.1 * delegation_value)), delegation["delegations"][0]["value"], msg=delegation)
         self.assertEqual(hex(int(5.5 * delegation_value)), delegation["delegations"][1]["value"], msg=delegation)
         self.assertEqual(hex(int(4.4 * delegation_value)), delegation["delegations"][2]["value"], msg=delegation)
+
+    def test_6_pausable(self):
+        """
+        1. Join with 10 wallets and pause contract
+        2. Try to call 'whenNotPaused' decorated functions
+        3  Unpause, distribute, leave protocol and claim your ICX back
+        """
+        # 1
+        self._join()
+        self._pause()
+        # 2
+        self._join(condition=False)
+        self._leave(condition=False)
+        self._claim(condition=False)
+        self._vote(self._wallet, { self.prep_list[0]: 10 * 10**18}, condition=False)
+        self._distribute(condition=False)
+        # 3
+        self._unpause()
+        self._join()
+        # owner = self._get_wallet()
+        # while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
+        #     time.sleep(2)
+        # self._distribute()
+
+
+
