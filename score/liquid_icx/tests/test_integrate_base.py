@@ -21,7 +21,7 @@ class LICXTestBase(IconIntegrateTestBase):
     # preps on yeouido test-net
     PREP_LIST_YEOUIDO = ["hxca1e081e686ec4975d14e0fb8f966c3f068298be",
                          "hxe0cde6567eb6529fe31b0dc2f2697af84847f321",
-                         "hxec79e9c1c882632688f8c8f9a07832bcabe8be8f"
+                         "hxec79e9c1c882632688f8c8f9a07832bcabe8be8f",
                          "hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc"]
 
     PREP_LIST_LOCAL = ["hx000e0415037ae871184b2c7154e5924ef2bc075e",
@@ -225,7 +225,7 @@ class LICXTestBase(IconIntegrateTestBase):
         self.assertEqual(condition, tx_result["status"], msg=pp.pformat(tx_result))
         return tx_result
 
-    def _distribute(self, condition: bool = False):
+    def _distribute(self, condition: bool = True):
         tx = self._build_transaction(method="distribute", margin=100000000000)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertEqual(condition, tx_result["status"])
