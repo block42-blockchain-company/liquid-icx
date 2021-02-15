@@ -46,12 +46,11 @@ class LiquidICXTest(LICXTestBase):
         4. Try to send ICX directly to contract ( fallback function )
         """
         # 1
-        tx = self._pause()
-        pp.pprint(tx)
         self.assertEqual(self._get_wallets(), [])
         join_tx = self._join()
         self.assertEqual(len(self._get_wallets()), 1, msg=pp.pformat(join_tx))
         self._n_join(10)
+        time.sleep(self._block_confirm_interval)
         self.assertEqual(len(self._get_wallets()), 11)
         join_tx = self._join()
         self.assertEqual(len(self._get_wallets()), 11, msg=pp.pformat(join_tx))
@@ -226,25 +225,21 @@ class LiquidICXTest(LICXTestBase):
         # 1a
         delegation_value = 10 * 10 ** 18
         delegation = {self.prep_list[0]: delegation_value}
-        join_tx = self._join(value=18, prep_list=delegation)
-        self.assertFalse(join_tx["status"], msg=pp.pformat(join_tx))
+        join_tx = self._join(value=18, prep_list=delegation, condition=False)
         self.assertIn("Delegations values do not match", join_tx["failure"]["message"], msg=pp.pformat(join_tx))
         # 1b
-        join_tx = self._join(value=10, prep_list=delegation)
-        self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
+        join_tx = self._join(value=10, prep_list=delegation, condition=True)
         # 2
         transfer_tx = self._transfer_icx_from_to(self._wallet, self._wallet2, 150)
         self.assertTrue(join_tx["status"], msg=pp.pformat(transfer_tx))
         delegation = {self.prep_list[0]: delegation_value}
-        join_tx = self._join(self._wallet2, value=10, prep_list=delegation)
-        self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
+        self._join(self._wallet2, value=10, prep_list=delegation, condition=True)
         # 3
         delegation = {
             self.prep_list[1]: delegation_value * 5,
             self.prep_list[2]: delegation_value * 4
         }
-        join_tx = self._join(self._wallet2, value=90, prep_list=delegation)
-        self.assertTrue(join_tx["status"], msg=pp.pformat(join_tx))
+        self._join(self._wallet2, value=90, prep_list=delegation, condition=True)
         # 4
         self.assertEqual(self._get_staked(), hex(delegation_value * 11), msg=pp.pformat(self._get_staked()))
         delegations = self._get_delegation()["delegations"]
@@ -296,10 +291,6 @@ class LiquidICXTest(LICXTestBase):
         # 3
         self._unpause()
         self._join()
-        # owner = self._get_wallet()
-        # while self._icon_service.get_block("latest")["height"] <= int(owner["unlock_heights"][-1], 16):
-        #     time.sleep(2)
-        # self._distribute()
 
 
 
