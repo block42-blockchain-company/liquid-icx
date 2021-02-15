@@ -173,7 +173,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self.msg.sender != self.owner:
             revert("LiquidICX: Only owner can pause the contract.")
         self._is_paused.set(True)
-
         Logger.info(f"Pausing: {self._is_paused.get()}")
 
     @whenPaused
