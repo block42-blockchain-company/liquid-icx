@@ -1,4 +1,6 @@
 import iconservice
+
+from .scorelib.pausable import whenPaused, whenNotPaused
 from .scorelib.consts import *
 from .wallet import Wallet
 from .interfaces.irc_2_interface import *
@@ -66,6 +68,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._delegation = DictDB("delegation", db, int)
         self._delegation_keys = ArrayDB("delegation_keys", db, Address)
 
+        self._is_paused = VarDB("is_paused", db, bool)
+
         # System SCORE
         self._system_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
 
@@ -83,7 +87,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._min_value_to_get_rewards.set(10 * 10 ** _decimals)
         self._iteration_limit.set(500)
-        self._distributing.set(False)
 
         self._cap.set(1000 * 10 ** _decimals)
 
@@ -164,6 +167,23 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def newUnlockedTotal(self) -> int:
         return self._new_unlocked_total.get()
 
+    @whenNotPaused
+    @external
+    def pause(self):
+        if self.msg.sender != self.owner:
+            revert("LiquidICX: Only owner can pause the contract.")
+        self._is_paused.set(True)
+
+        Logger.info(f"Pausing: {self._is_paused.get()}")
+
+    @whenPaused
+    @external
+    def unPause(self):
+        if self.msg.sender != self.owner:
+            revert("LiquidICX: Only owner can unpause the contract.")
+        self._is_paused.set(False)
+        Logger.info(f"Unpausing: {self._is_paused.get()}")
+
     @external
     def setIterationLimit(self, _iteration_limit: int) -> None:
         """
@@ -203,6 +223,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Only owner function at current state.")
         self._cap.set(_value * 10 ** self._decimals.get())
 
+    @whenNotPaused
     @payable
     @external
     def join(self, _delegation: str = None):
@@ -217,8 +238,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._cap.get() <= self.getStaked() + self.msg.value:
             revert("LiquidICX: Currently impossible to join the pool")
 
+        Logger.info(f"Paused: {self._is_paused.get()}")
+
         self._join(self.msg.sender, self.msg.value, json_loads(_delegation))
 
+    @whenNotPaused
     @external
     def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:
         """
@@ -240,6 +264,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._transfer(self.msg.sender, _to, _value, _data)
 
+    @whenNotPaused
     @external
     def leave(self, _value: int = None):
         """
@@ -252,6 +277,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._leave(self.msg.sender, _value)
 
+    @whenNotPaused
     @external
     def claim(self):
         """
@@ -265,6 +291,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             self.icx.transfer(self.msg.sender, claim_amount)
             self.Claim()
 
+    @whenNotPaused
     @external
     def vote(self, _delegation: str):
         """
@@ -277,6 +304,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         self._vote(self.msg.sender, delegation)
 
+    @whenNotPaused
     @external
     def distribute(self):
         """
@@ -508,7 +536,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def _distributionSetup(self):
         if not self._rewards.get():
             self._claimRewards()
-            self._current_distribute_linked_list_id.set(self._wallets.get_head_node().id)  # get head id for start iteration
+            self._current_distribute_linked_list_id.set(
+                self._wallets.get_head_node().id)  # get head id for start iteration
 
     def _distributeOneWallet(self, _linked_list_id) -> None:
         """
@@ -528,9 +557,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         wallet_leave_licx = wallet.leave(self)
 
         self._balances[address] = self._balances[address] + \
-                                       wallet_unlocked_licx + \
-                                       wallet_reward_licx - \
-                                       wallet_leave_licx
+                                  wallet_unlocked_licx + \
+                                  wallet_reward_licx - \
+                                  wallet_leave_licx
 
         self._new_unlocked_total.set(self._new_unlocked_total.get() + wallet_unlocked_licx)
         self._total_unstake_in_term.set(self._total_unstake_in_term.get() + wallet_leave_licx)
