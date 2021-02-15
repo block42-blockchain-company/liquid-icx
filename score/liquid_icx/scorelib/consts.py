@@ -19,7 +19,7 @@ from iconservice import *
 # ================================================
 #  Consts
 # ================================================
-MAX_ITERATION_LOOP = 100
+MAX_ITERATION_LOOP = 43120
 
 TAG = 'LiquidICX'
 VERSION = '0.1.0'
@@ -38,7 +38,7 @@ FAKE_SYSTEM_CONTRACT_YEOUIDO = Address.from_string('cx2b01010a92bf78ee464be0b5ef
 # PREP_ADDRESS = Address.from_string("hx168d2cfe6d73acb8cb690d3abda54d3af266addf")  # block42
 
 # ------------ LOCAL NET -------------
-PREP_ADDRESS = Address.from_string("hx000e0415037ae871184b2c7154e5924ef2bc075e")
+# PREP_ADDRESS = Address.from_string("hx000e0415037ae871184b2c7154e5924ef2bc075e")
 
 # ------------ BICON NET -------------
-# PREP_ADDRESS = Address.from_string("hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc")
+PREP_ADDRESS = Address.from_string("hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc")

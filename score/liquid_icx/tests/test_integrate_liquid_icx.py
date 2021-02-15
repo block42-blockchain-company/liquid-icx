@@ -17,7 +17,7 @@ from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 
 class LiquidICXTest(LICXTestBase):
-    LOCAL_NETWORK_TEST = True
+    LOCAL_NETWORK_TEST = False
     TERM_LENGTH = 43120
 
     def setUp(self, **kwargs):
