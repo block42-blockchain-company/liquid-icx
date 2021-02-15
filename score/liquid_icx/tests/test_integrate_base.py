@@ -222,7 +222,7 @@ class LICXTestBase(IconIntegrateTestBase):
             paras = {"_delegation": json.dumps(prep_list)}
         tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address(), params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
-        self.assertEqual(condition, tx_result["status"], msg=pp.pformat(tx_result))
+        self.assertEqual(condition, tx_result["status"], msg=tx_result)
         return tx_result
 
     def _distribute(self, condition: bool = True):

@@ -1,3 +1,4 @@
+import json
 import os
 import pprint as pp
 import fileinput
@@ -110,19 +111,17 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(self._get_cap(), hex(100 * 10 ** 18))
         # 2
         while True:
-            join_tx = self._join(value=30)
-            if not join_tx["status"]:
-                self.assertIn("Currently impossible to join the pool", join_tx["failure"]["message"],
-                              msg=pp.pformat(join_tx))
+            try:
+                self._join(value=30)
+            except Exception as e:
                 break
         # 3
         self._set_cap(200)
         self.assertEqual(self._get_cap(), hex(200 * 10 ** 18))
         while True:
-            join_tx = self._join(value=30)
-            if not join_tx["status"]:
-                self.assertIn("Currently impossible to join the pool", join_tx["failure"]["message"],
-                              msg=pp.pformat(join_tx))
+            try:
+                self._join(value=30)
+            except Exception as e:
                 break
         # 4
         self.assertEqual(1, len(self._get_wallets()))
