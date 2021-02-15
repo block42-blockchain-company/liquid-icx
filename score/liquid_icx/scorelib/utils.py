@@ -50,7 +50,7 @@ class Utils:
         sys_score = IconScoreBase.create_interface_score(SYSTEM_SCORE, InterfaceSystemScore)
         iiss_info = sys_score.getIISSInfo()
         prep_array: ArrayDB = ArrayDB("prep_array", db, value_type=Address)
-        preps_updated = VarDB("preps_updated", db, value_type=int)  # stores height, when were preps last time updated
+        preps_updated = VarDB("preps_updated", db, value_type=int)  # stores height, last time when the preps got updated
 
         if preps_updated.get() < iiss_info["nextPRepTerm"] - TERM_LENGTH or not len(prep_array):
             # remove all previous preps

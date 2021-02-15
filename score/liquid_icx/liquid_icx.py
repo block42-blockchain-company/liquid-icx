@@ -153,8 +153,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return self._total_unstake_in_term.get()
 
     @external(readonly=True)
-    def getWalletByNodeID(self, node_id: int) -> Address:
-        return self._wallets.node_value(node_id)
+    def getWalletByNodeID(self, _node_id: int) -> Address:
+        return self._wallets.node_value(_node_id)
 
     @external(readonly=True)
     def getCap(self) -> int:
@@ -163,27 +163,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     @external(readonly=True)
     def newUnlockedTotal(self) -> int:
         return self._new_unlocked_total.get()
-
-    @external
-    def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:
-        """
-        External entry function to send LICX from one wallet to another
-        :param _to: Recipient's wallet
-        :param _value: LICX amount to transfer
-        :param _data: Optional information for transfer Event
-        """
-
-        if self._distributing.get():
-            revert("LiquidICX: Can not transfer while distribute cycle.")
-        if _value < 0:
-            revert("LiquidICX: Transferring value cannot be less than zero.")
-        if _to == ZERO_WALLET_ADDRESS:
-            revert("LiquidICX: Can not transfer LICX to zero wallet address.")
-
-        if _data is None:
-            _data = b'None'
-
-        self._transfer(self.msg.sender, _to, _value, _data)
 
     @external
     def setIterationLimit(self, _iteration_limit: int) -> None:
@@ -241,6 +220,27 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._join(self.msg.sender, self.msg.value, json_loads(_delegation))
 
     @external
+    def transfer(self, _to: Address, _value: int, _data: bytes = None) -> None:
+        """
+        External entry function to send LICX from one wallet to another
+        :param _to: Recipient's wallet
+        :param _value: LICX amount to transfer
+        :param _data: Optional information for transfer Event
+        """
+
+        if self._distributing.get():
+            revert("LiquidICX: Can not transfer while distribute cycle.")
+        if _value < 0:
+            revert("LiquidICX: Transferring value cannot be less than zero.")
+        if _to == ZERO_WALLET_ADDRESS:
+            revert("LiquidICX: Can not transfer LICX to zero wallet address.")
+
+        if _data is None:
+            _data = b'None'
+
+        self._transfer(self.msg.sender, _to, _value, _data)
+
+    @external
     def leave(self, _value: int = None):
         """
         External entry point to leave the LICX pool
@@ -262,10 +262,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         claim_amount = wallet.claim()
 
         if claim_amount:
-            if self.icx.send(self.msg.sender, claim_amount):
-                self.Claim()
-            else:
-                revert("LiquidICX: Could not send ICX to the given address.")
+            self.icx.transfer(self.msg.sender, claim_amount)
+            self.Claim()
 
     @external
     def vote(self, _delegation: str):
@@ -275,7 +273,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
         delegation = json_loads(_delegation)
         if delegation is None:
-            revert("LIquidICX: Delegation can not be None")
+            revert("LIquidICX: Delegation cannot be None")
 
         self._vote(self.msg.sender, delegation)
 
@@ -327,7 +325,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._delegate()
         self.Join(_sender, _amount)
 
-    def _leave(self, sender: Address, _value: int):
+    def _leave(self, _sender: Address, _value: int):
         """
         Internal method, which adds a leave request to a specific address.
         Requests are then later resolved in distribute cycle, once per term.
@@ -337,13 +335,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         if _value < self._min_value_to_get_rewards.get():
             revert(f"LiquidICX: Leaving value cannot be less than {self._min_value_to_get_rewards.get()}.")
-        if self._balances[sender] < _value:
+        if self._balances[_sender] < _value:
             revert("LiquidICX: Out of balance.")
 
-        wallet = Wallet(self.db, sender)
+        wallet = Wallet(self.db, _sender)
         wallet.requestLeave(_value)
 
-        self.LeaveRequest(sender, _value)
+        self.LeaveRequest(_sender, _value)
 
     def _vote(self, _sender: Address, _delegations: dict):
         """
@@ -365,6 +363,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if sum_undelegated != sum_delegated:
             revert("LiquidICX: New total delegation should match with the previous total delegation.")
 
+        self._system_score.setStake(sum_delegated)
         self._delegate()
         self.Vote(_sender)
 
@@ -387,7 +386,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         sender.subtractDelegationsProportionallyToWallet(self, _value)
 
         self._balances[_from] = self._balances[_from] - _value
-        self._check_wallet_has_enough_funds(sender)
+        self._remove_wallet_if_not_enough_funds(sender)
 
         # receiver has already voting power, add to existing one, otherwise proportionally divide between all
         # delegated preps
@@ -397,15 +396,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             self._addDelegationsProportionallyToSCORE(receiver, _value)
 
         self._balances[_to] = self._balances[_to] + _value
-        if not receiver.exists() and self._balances[_to] >= self._min_value_to_get_rewards.get():
-            node_id = self._wallets.append(str(_to))
-            receiver.node_id = node_id
+        self._add_wallet_if_enough_funds(receiver)
 
         if _to.is_contract:
             recipient_score = self.create_interface_score(_to, TokenFallbackInterface)
             recipient_score.tokenFallback(_from, _value, _data)
 
-        self._delegate(stake=False)
+        self._delegate()
         self.Transfer(_from, _to, _value, _data)
 
     def _distribute(self):
@@ -478,7 +475,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distributing.set(False)
         self.Distribute(self.block_height)
 
-    def _delegate(self, stake=True):
+    def _delegate(self):
         """
         Iterates through internal delegation dictionary, builds up delegation list and delegates.
         :param stake: If true the function stakes new value, which is the sum of all delegations.
@@ -494,8 +491,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             })
             stake_sum += self._delegation[address]
 
-        if stake:
-            self._system_score.setStake(stake_sum)   # TODO move into separate function
         self._system_score.setDelegation(delegations)
 
     def _calculateWalletRewards(self, _wallet: Wallet, _address: Address) -> int:
@@ -636,8 +631,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         return proportional_delegations
 
-    def _check_wallet_has_enough_funds(self, _wallet: Wallet):
+    def _remove_wallet_if_not_enough_funds(self, _wallet: Wallet):
         if _wallet.exists() and self._balances[_wallet.address] < self._min_value_to_get_rewards.get() \
                 and _wallet.locked == 0:
             self._wallets.remove(_wallet.node_id)
             _wallet.node_id = 0
+
+    def _add_wallet_if_enough_funds(self, _wallet: Wallet):
+        if not _wallet.exists() and self._balances[_wallet.address] >= self._min_value_to_get_rewards.get():
+            node_id = self._wallets.append(str(_wallet.address))
+            _wallet.node_id = node_id
