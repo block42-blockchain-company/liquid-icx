@@ -6,7 +6,7 @@ Secure the ICON network, earn staking rewards while staying liquid. 🧽💧
 
 ##### ICON network staking
 
-On ICON network the native token of ICX can be staked in the protocol which gives stakers a passive return in form of ICX tokens but the staked tokens are locked and can not be moved while the ICX is staked. 
+On ICON network the native token (ICX) can be staked in the protocol which gives stakers a passive return in form of ICX tokens but the staked tokens are locked and can not be moved while the ICX is staked. 
 
 ##### LICX
 
@@ -35,8 +35,7 @@ Depositing LICX into LICX protocol will withdraw ICX (in ratio of 1:1) from the 
 *If a user would stake on his own he would have to also wait the same amount of days to unstake.*
 
 ###### Rewards
-
-Staking rewards distribution from the network has to be manually triggered. Anyone can trigger this function which will execute claiming new rewards, distribution of LICX to eligible users, restaking and redelegating ICX.
+Staking rewards distribution from the network can happen only once per term and has to be manually triggered. Anyone can trigger this function which will execute claiming new rewards, distribution of LICX to eligible users, restaking and redelegating ICX.
 Wallets that have less than 10 LICX in them are not eligible to prevent dust attacks (this number may be a subject to change).
 ***
 ### LICX functions
@@ -51,20 +50,44 @@ LICX implements all the standard IRC-2 methods.
 
 To participate at the pool/protocol,they are also some other methods implemented.
 ##### Join
-Adds a join (mint) request to the wallet, which converts ICX to LICX. Joining requests are resolved once per term in distribute function,
-which is described bellow. Each wallet has maximal of 10 join requests per term. LICX tokens are locked for 2 terms, since they are not producing any rewards yet, meaning you can not transfer them yet.
-ICX is then being staked and currently delegated to block42. 
-This will be changed in future iterations and holders of LICX will be able to decide who they delegate their portion of ICX to.
+```python
+def join(self, delegation: str = None)
+```
+It's a payable function,that adds a join (mint) request to the wallet, which converts ICX to LICX. Requests are resolved once per term in distribute function. 
+Each wallet has maximal of 10 join requests per term. LICX tokens are locked for 2 terms, since they are not producing any rewards yet, 
+meaning you can not transfer them.  
+
+The ICX is also being staked and delegated to prep addresses that user provided when calling a function.
+In case the user does not care and does not pass any delegations, then they voting power is proportionally divided between
+all the preps, that SCORE is currently delegating.
 
 ##### Leave
-Adds a leave (burn) request to the wallet, which converts LICX back to ICX. Similar to the joining requests, also leave requests are resolved
-once per term only. Each requests gets an unstaking height  
+```python
+def leave(self, _value: int = None)
+```
+Adds a leave (burn) request to the wallet, which converts LICX back to ICX. Similar to the joining requests, leave requests are resolved
+once per term only.   
+User can specify the leaving amount/value, meaning they can burn all of their LICX tokens or just part of it. In case that _value 
+is not passed to the function call, all of their tokens will be burned in the next distribute cycle.
+
+#### Vote
+```python
+def vote(self, delegation: str)
+```
+Allows users ( who joined the protocol ) to change their delegations. Meaning, all the previous delegations are removed and the new ones are added.
 
 #### Claim
-Sends currently all available ICX from SCORE back to the account.
+```python
+def claim(self)
+```
+Sends currently all available user's ICX from SCORE back to the account.
 
-##### Distribute
-Function distribute rewards to the all the eligble wallets ( currenlty wallets with more than 10 ICX, but this value can be changed) involved in protocol, it also resolves each wallets join/leave requests.
+#### Distribute
+```python
+def distribute(self)
+```
+Function distribute rewards to the all the eligible wallets ( currently wallets with more than 10 ICX, but this value can be changed) 
+involved in protocol, it also resolves each wallets join/leave requests. 
 The function mints and burns the LICX ( total supply and each Wallet balance is being updated ).
 Everyone can call the function, which benefits the whole ecosystem. In the future incentives to call the function will be implemented.
 

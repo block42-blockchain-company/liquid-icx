@@ -511,34 +511,3 @@ class LinkedListDB:
 
         return result
 
-
-class UIDLinkedListDB(LinkedListDB):
-    """
-        UIDLinkedListDB is a linked list of unique IDs.
-        The linkedlist node ID is equal to the value of the UID provided,
-        so the developer needs to make sure the UID provided is globally unique to the application.
-        Consequently, the concept of node ID is merged with the UID provided
-        from a developper point of view, which simplifies the usage of the linkedlist.
-    """
-    _NAME = 'UID_LINKED_LIST_DB'
-
-    def __init__(self, address: Address, db: IconScoreDatabase):
-        name = f'{str(address)}_{UIDLinkedListDB._NAME}'
-        super().__init__(name, db, int)
-        self._name = name
-
-    def append(self, uid: int, _: int = None) -> None:
-        super().append(uid, uid)
-
-    def prepend(self, uid: int, _: int = None) -> None:
-        super().prepend(uid, uid)
-
-    def append_after(self, value: int, after_id: int, _: int = None) -> None:
-        super().append_after(value, after_id, value)
-
-    def prepend_before(self, value: int, before_id: int, _: int = None) -> None:
-        super().prepend_before(value, before_id, value)
-
-    def __iter__(self):
-        for node_id, uid in super().__iter__():
-            yield uid

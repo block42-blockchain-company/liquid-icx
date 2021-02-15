@@ -26,11 +26,19 @@ VERSION = '0.1.0'
 SYSTEM_SCORE = Address.from_string('cx0000000000000000000000000000000000000000')
 ZERO_WALLET_ADDRESS = Address.from_string('hx0000000000000000000000000000000000000000')
 
-TERM_LENGTH = 43120
+TERM_LENGTH = 30
 UNSTAKING_MARGIN = 300
 
 # Temporary System Contract for easier developing
 FAKE_SYSTEM_CONTRACT_LOCAL = Address.from_string('cx7c0f2d7d4253a230177bf95b897e0321ac5e43d1')
 FAKE_SYSTEM_CONTRACT_YEOUIDO = Address.from_string('cx2b01010a92bf78ee464be0b5eff94676e95cd757')
 
-PREP_ADDRESS = Address.from_string("hx168d2cfe6d73acb8cb690d3abda54d3af266addf")  # block42
+
+# ------------ MAIN NET -------------
+# PREP_ADDRESS = Address.from_string("hx168d2cfe6d73acb8cb690d3abda54d3af266addf")  # block42
+
+# ------------ LOCAL NET -------------
+PREP_ADDRESS = Address.from_string("hx000e0415037ae871184b2c7154e5924ef2bc075e")
+
+# ------------ BICON NET -------------
+# PREP_ADDRESS = Address.from_string("hx487a43ade1479b6e7aa3d6f898a721b8ba9a4ccc")
