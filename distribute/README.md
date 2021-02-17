@@ -1,6 +1,6 @@
 # Liquid-ICX Telegram Bot
 
-This Telegram Bot checks periodically if a new ICON term has started,
+This Telegram Bot checks periodically if a new ICON term has started
 and calls LICX's `distribute` function if that's the case.
 In addition, the telegram user can also manually invoke a method
 call `distribute`.

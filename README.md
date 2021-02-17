@@ -31,7 +31,7 @@ Depositing ICX into LICX protocol will put all the assets into the LICX pool. Us
 
 ###### Withdrawal
 
-Depositing LICX into LICX protocol will withdraw ICX (in ratio of 1:1) from the LICX pool. When withdrawing LICX it will take between 5 to 20 terms (days) based on the unstaking period that the ICON network currently has. The number of days depends on the amount the ICX staked in the ICON network, the higher the % of ICON network is staked the fewer days you need to wait to unstake. User will have to manually claim their ICX once it has been unstaked (after the unstaking period).
+Depositing LICX into LICX protocol will withdraw ICX (in ratio of 1:1) from the LICX pool. When withdrawing ICX it will take between 5 to 20 terms (days) based on the unstaking period that the ICON network currently has. The number of days depends on the amount the ICX staked in the ICON network, the higher the % of ICON network is staked the fewer days you need to wait to unstake. User will have to manually claim their ICX once it has been unstaked (after the unstaking period).
 *If a user would stake on his own he would have to also wait the same amount of days to unstake.*
 
 ###### Rewards
@@ -53,8 +53,8 @@ To participate at the pool/protocol,they are also some other methods implemented
 ```python
 def join(self, delegation: str = None)
 ```
-It's a payable function,that adds a join (mint) request to the wallet, which converts ICX to LICX. Requests are resolved once per term in distribute function. 
-Each wallet has maximal of 10 join requests per term. LICX tokens are locked for 2 terms, since they are not producing any rewards yet, 
+It's a payable function, that adds a join (mint) request to the wallet, which converts ICX to LICX. Requests are resolved once per term in distribute function. 
+Each wallet has maximum of 10 join requests per term. LICX tokens are locked for 2 terms, since they are not producing any rewards yet, 
 meaning you can not transfer them.  
 
 The ICX is also being staked and delegated to prep addresses that user provided when calling a function.
@@ -74,21 +74,21 @@ is not passed to the function call, all of their tokens will be burned in the ne
 ```python
 def vote(self, delegation: str)
 ```
-Allows users ( who joined the protocol ) to change their delegations. Meaning, all the previous delegations are removed and the new ones are added.
+Allows users (who joined the protocol) to change their delegations. Meaning, all the previous delegations are removed and the new ones are added.
 
 #### Claim
 ```python
 def claim(self)
 ```
-Sends currently all available user's ICX from SCORE back to the account.
+Sends all currently available user's ICX from SCORE back to the account.
 
 #### Distribute
 ```python
 def distribute(self)
 ```
-Function distribute rewards to the all the eligible wallets ( currently wallets with more than 10 ICX, but this value can be changed) 
+This function distributes rewards to the all the eligible wallets (currently wallets with more than 10 ICX, but this value can be changed) 
 involved in protocol, it also resolves each wallets join/leave requests. 
-The function mints and burns the LICX ( total supply and each Wallet balance is being updated ).
+The function mints and burns the LICX (total supply and each wallet balance is being updated).
 Everyone can call the function, which benefits the whole ecosystem. In the future incentives to call the function will be implemented.
 
 ## Development
@@ -99,7 +99,7 @@ To start local development you can choose between two options.
 1. Install and run tbears in docker container (quick and easy) or you can 
 2. Install tbears with PIP.
 
-#### Docker
+#### 1. Docker
 ```bash
 docker run -it --name local-tbears -p 9000:9000 -v /path/to/repo/liquid-icx/score:/work iconloop/tbears:mainnet
 ```
@@ -111,7 +111,7 @@ This command will do the following
 * create a volume
 * and attach stdin/stderr to the container
 
-#### Pip
+#### 2. Pip
 ##### MacOS
 ```bash
 # install develop tools
