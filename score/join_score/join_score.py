@@ -2,12 +2,13 @@ from iconservice import *
 from .interfaces.LICXInterface import *
 
 
-# ------------------------------------------------------------------
-# Bicon test-net address: cxdda1febec68c13ea4e017afc8977bccc12aab4d8
-# ------------------------------------------------------------------
+
+
 
 class JoinScore(IconScoreBase):
-
+    """
+    This score is used for testing purposes, to test if the SCORE is also able to join the licx protocol.
+    """
     def Join(self):
         pass
 

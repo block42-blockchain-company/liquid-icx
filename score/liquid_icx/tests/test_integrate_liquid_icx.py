@@ -18,21 +18,22 @@ from score.liquid_icx.tests.test_integrate_base import LICXTestBase
 
 class LiquidICXTest(LICXTestBase):
     LOCAL_NETWORK_TEST = True
-    TERM_LENGTH = 43120
 
     def setUp(self, **kwargs):
         super().setUp()
+
+        if self.LOCAL_NETWORK_TEST:
+            self.replace_in_consts_py("TERM_LENGTH", "43120", "30")
+            self.replace_in_consts_py("PREP_ADDRESS", self.PREP_LIST_YEOUIDO[0], self.PREP_LIST_LOCAL[0])
+
         self._score_address = self._deploy_score()["scoreAddress"]
         print(f"New SCORE address: {self._score_address}")
-        if self.LOCAL_NETWORK_TEST:
-            self.TERM_LENGTH = 30
-            self.replace_in_consts_py("TERM_LENGTH", "43120", "30")
 
     def tearDown(self):
         super().tearDown()
         if self.LOCAL_NETWORK_TEST:
-            self.TERM_LENGTH = 43120
             self.replace_in_consts_py("TERM_LENGTH", "30", "43120")
+            self.replace_in_consts_py("PREP_ADDRESS", self.PREP_LIST_LOCAL[0], self.PREP_LIST_YEOUIDO[0])
 
     def test_score_update(self):
         # update SCORE
@@ -199,15 +200,16 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(delegations[2]["address"], self.prep_list[0], msg=pp.pformat(owner))
         # 3
         delegation = {self.prep_list[3]: 50 * 10 ** 18}
-        self._vote(self._wallet, delegation, condition=False)
+        self._change_delegation(self._wallet, delegation, condition=False)
         delegation = {KeyWallet.create().get_address(): 22 * 10 ** 18}
-        self._vote(self._wallet, delegation, condition=False)
+        self._change_delegation(self._wallet, delegation, condition=False)
         delegation = {self.prep_list[3]: 22 * 10 ** 18}
-        self._vote(self._wallet, delegation, condition=True)
+        self._change_delegation(self._wallet, delegation, condition=True)
         next_term = self._getNextTermStart()
 
     def test_5_delegations(self):
         """
+        This test-case runs for days on test-net. Better to run it locally only.
         0. Wait till next term starts
         1a. Delegate to a prep, which should fail, because the joining and total delegation amount don't match
         1b. Delegate with same paramaters, but correct joining amount
@@ -263,9 +265,12 @@ class LiquidICXTest(LICXTestBase):
         self.assertEqual(self.prep_list[0], receiver["delegation_addr"][0], msg=pp.pformat(receiver))
         self.assertEqual(self.prep_list[1], receiver["delegation_addr"][1], msg=pp.pformat(receiver))
         self.assertEqual(self.prep_list[2], receiver["delegation_addr"][2], msg=pp.pformat(receiver))
-        self.assertEqual(hex(int(delegation_value + delegation_value * 0.1)), receiver["delegation_values"][0], msg=pp.pformat(receiver))
-        self.assertEqual(hex(int(5 * delegation_value + delegation_value * 0.5)), receiver["delegation_values"][1], msg=pp.pformat(receiver))
-        self.assertEqual(hex(int(4 * delegation_value + delegation_value * 0.4)), receiver["delegation_values"][2], msg=pp.pformat(receiver))
+        self.assertEqual(hex(int(delegation_value + delegation_value * 0.1)), receiver["delegation_values"][0],
+                         msg=pp.pformat(receiver))
+        self.assertEqual(hex(int(5 * delegation_value + delegation_value * 0.5)), receiver["delegation_values"][1],
+                         msg=pp.pformat(receiver))
+        self.assertEqual(hex(int(4 * delegation_value + delegation_value * 0.4)), receiver["delegation_values"][2],
+                         msg=pp.pformat(receiver))
         delegation = self._get_delegation()
         self.assertEqual(hex(11 * delegation_value), delegation["totalDelegated"], msg=delegation)
         self.assertEqual(hex(int(1.1 * delegation_value)), delegation["delegations"][0]["value"], msg=delegation)
@@ -285,11 +290,8 @@ class LiquidICXTest(LICXTestBase):
         self._join(condition=False)
         self._leave(condition=False)
         self._claim(condition=False)
-        self._vote(self._wallet, { self.prep_list[0]: 10 * 10**18}, condition=False)
+        self._change_delegation(self._wallet, {self.prep_list[0]: 10 * 10 ** 18}, condition=False)
         self._distribute(condition=False)
         # 3
         self._unpause()
         self._join()
-
-
-

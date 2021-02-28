@@ -52,7 +52,6 @@ class LICXTestBase(IconIntegrateTestBase):
     def setUp(self) -> None:
         super().setUp()
         self._block_confirm_interval = 2 if self.LOCAL_NETWORK_TEST else 5
-        self.replace_in_consts_py("TERM_LENGTH", "43120", "30")
 
 
     @classmethod
@@ -222,7 +221,7 @@ class LICXTestBase(IconIntegrateTestBase):
             paras = {"_delegation": json.dumps(prep_list)}
         tx = self._build_transaction(method="join", value=value * 10 ** 18, from_=wallet.get_address(), params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, wallet), self._icon_service)
-        self.assertEqual(condition, tx_result["status"], msg=tx_result)
+        self.assertEqual(condition, tx_result["status"], msg=pp.pformat(tx_result))
         return tx_result
 
     def _distribute(self, condition: bool = True):
@@ -254,9 +253,9 @@ class LICXTestBase(IconIntegrateTestBase):
         # LiquidICXTest.pp.pprint(tx_result)
         return tx_result
 
-    def _vote(self, from_: KeyWallet, delegation: dict, condition: bool = True):
+    def _change_delegation(self, from_: KeyWallet, delegation: dict, condition: bool = True):
         paras = {"_delegation": json.dumps(delegation)}
-        tx = self._build_transaction(method="vote", from_=from_.get_address(), params=paras)
+        tx = self._build_transaction(method="change_delegation", from_=from_.get_address(), params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, from_), self._icon_service)
         self.assertEqual(tx_result["status"], condition, msg=pp.pformat(tx_result))
         return tx_result
@@ -310,7 +309,7 @@ class LICXTestBase(IconIntegrateTestBase):
         paras = {
             "_value": value
         }
-        tx = self._build_transaction(method="setCap", params=paras)
+        tx = self._build_transaction(method="set_cap", params=paras)
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertEqual(tx_result["status"], condition, msg=tx_result)
         return tx_result
@@ -351,7 +350,7 @@ class LICXTestBase(IconIntegrateTestBase):
         return tx_result
 
     def _unpause(self):
-        tx = self._build_transaction(method="unPause", type_="write")
+        tx = self._build_transaction(method="unpause", type_="write")
         tx_result = self.process_transaction(SignedTransaction(tx, self._wallet), self._icon_service)
         self.assertTrue(tx_result["status"])
         return tx_result

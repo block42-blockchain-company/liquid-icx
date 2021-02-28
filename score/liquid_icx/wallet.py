@@ -26,10 +26,11 @@ class Wallet:
 
     def join(self, _join_amount: int, _delegation: dict, _licx: IconScoreBase):
         """
-        Adds new values to the wallet's join queues
-        :param join_amount: amount of ICX that a wallet sent
-        :param delegation:
-        :param licx
+        Adds new values to the wallet's join queue
+        It also tracks the delegations of each wallet
+        :param _join_amount: amount of ICX that a wallet sent
+        :param _delegation: delegations as dictionary
+        :param _licx: licx instance, to modify '_delegation' and '_delegation_keys' db variables
         """
 
         if len(self._join_values) >= 10:
@@ -43,13 +44,13 @@ class Wallet:
 
         delegation_amount_sum = 0
         for address, value in _delegation.items():
-            self.addSingleDelegation(_licx, address, value)
+            self.add_single_delegation(_licx, address, value)
             delegation_amount_sum += value
 
         if delegation_amount_sum != _join_amount:
             revert("LiquidICX: Delegations values do not match to the amount of ICX sent.")
 
-    def requestLeave(self, _leave_amount):
+    def request_leave(self, _leave_amount):
         """
         Adds a leave amount to the wallet's leave queue.
         :param _leave_amount: Amount of LICX for a leave request
@@ -82,7 +83,7 @@ class Wallet:
                 leave_amount += self._leave_values[it]
                 self._unstake_heights.put(current_height + unstake_period + UNSTAKING_MARGIN)
 
-            self.subtractDelegationsProportionallyToWallet(_licx, leave_amount)
+            self.subtract_delegations_proportionally_to_wallet(_licx, leave_amount)
 
         return leave_amount
 
@@ -126,7 +127,7 @@ class Wallet:
                     break
         return claim_amount
 
-    def addSingleDelegation(self, _licx: IconScoreBase, _address: str, _value: int):
+    def add_single_delegation(self, _licx: IconScoreBase, _address: str, _value: int):
         prep_address: Address = Address.from_string(_address)
 
         # If prep_address is already in the wallet's delegation
@@ -134,7 +135,6 @@ class Wallet:
             index = list(self._delegation_address).index(prep_address)
             self._delegation_value[index] += _value
             _licx._delegation[prep_address] += _value
-        # If prep_address is not yet part of the wallet's delegation
         else:
             # If prep_address already exists in global licx delegations
             if prep_address in _licx._delegation_keys:
@@ -149,7 +149,7 @@ class Wallet:
             self._delegation_address.put(prep_address)
             self._delegation_value.put(_value)
 
-    def subtractDelegationsProportionallyToWallet(self, _licx: IconScoreBase, _amount: int):
+    def subtract_delegations_proportionally_to_wallet(self, _licx: IconScoreBase, _amount: int):
         for i in range(len(self._delegation_address)):
             basis_point = Utils.calcBPS(self.delegation_value[i], _licx._balances[self._address])
             subtract = int((_amount * basis_point) / 10000)
@@ -163,14 +163,14 @@ class Wallet:
                 Utils.remove_from_array(self.delegation_address, self.delegation_address[i])
                 Utils.remove_from_array(self.delegation_value, self.delegation_value[i])
 
-    def calcDistributeDelegations(self, _reward: int, _balance: int, _delegations: DictDB):
+    def calc_distribute_delegations(self, _reward: int, _balance: int, _delegations: DictDB):
         for i in range(len(self._delegation_address)):
             basis_point = Utils.calcBPS(self._delegation_value[i], _balance)
             delegation_value = int((_reward * basis_point) / 10000)
             self._delegation_value[i] += delegation_value
             _delegations[Address.from_string(self._delegation_address[i])] += delegation_value
 
-    def hasVotingPower(self) -> bool:
+    def has_voting_power(self) -> bool:
         return len(self.delegation_address) > 0
 
     def exists(self):
