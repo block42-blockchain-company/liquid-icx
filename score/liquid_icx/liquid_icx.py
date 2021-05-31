@@ -422,11 +422,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._balances[_to] = self._balances[_to] + _value
         self._add_wallet_if_enough_funds(receiver)
 
+        self._delegate()
+
         if _to.is_contract:
             recipient_score = self.create_interface_score(_to, TokenFallbackInterface)
             recipient_score.tokenFallback(_from, _value, _data)
 
-        self._delegate()
         self.Transfer(_from, _to, _value, _data)
 
     def _distribute(self):
