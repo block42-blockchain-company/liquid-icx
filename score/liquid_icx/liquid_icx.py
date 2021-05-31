@@ -364,6 +364,8 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Out of balance.")
 
         wallet = Wallet(self.db, _sender)
+        if self._balances[_sender] < (sum(wallet.leave_values) + _value):
+            revert("LiquidICX: Out of balance.")
         wallet.request_leave(_value)
 
         self.LeaveRequest(_sender, _value)
