@@ -1,4 +1,4 @@
-import iconservice
+from iconservice import *
 
 from .scorelib.pausable import whenPaused, whenNotPaused
 from .scorelib.consts import *
