@@ -10,7 +10,7 @@ def whenNotPaused(func):
         raise NotAFunctionError
 
     @wraps(func)
-    def __wrapper(self: object, *args, **kwargs):
+    def __wrapper(self, *args, **kwargs):
         if self._is_paused.get():
             revert("LiquidICX: Function only callable when score is not paused.")
 
@@ -23,7 +23,7 @@ def whenPaused(func):
         raise NotAFunctionError
 
     @wraps(func)
-    def __wrapper(self: object, *args, **kwargs):
+    def __wrapper(self, *args, **kwargs):
         if not self._is_paused.get():
             revert("LiquidICX: Function only callable when score is paused.")
 
