@@ -466,7 +466,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         Claim IScore rewards. It is called only once per term, at the start of the cycle.
         """
 
-        self._rewards.set(0)
         self._rewards.set(self._system_score.queryIScore(self.address)["estimatedICX"])
         self._system_score.claimIScore()
         self._distributing.set(True)
