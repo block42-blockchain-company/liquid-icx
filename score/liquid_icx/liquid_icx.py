@@ -253,8 +253,6 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             revert("LiquidICX: Can not transfer while distribute cycle.")
         if _value < 0:
             revert("LiquidICX: Transferring value cannot be less than zero.")
-        if _to == ZERO_WALLET_ADDRESS:
-            revert("LiquidICX: Can not transfer LICX to zero wallet address.")
 
         if _data is None:
             _data = b'None'
