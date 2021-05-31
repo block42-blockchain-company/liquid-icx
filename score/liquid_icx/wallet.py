@@ -1,4 +1,5 @@
 from .scorelib.utils import *
+from iconservice import *
 
 
 class Wallet:
