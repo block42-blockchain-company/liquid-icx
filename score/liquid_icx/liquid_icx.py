@@ -622,7 +622,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     def _add_delegations_proportionally_to_wallet(self, _wallet: Wallet, _value: int):
         for i in range(len(_wallet.delegation_value)):
             basis_point = Utils.calcBPS(_wallet.delegation_value[i], self._balances[_wallet.address])
-            additional_delegation = int((_value * basis_point) / 10000)
+            additional_delegation = Utils.calcValueProportionalToBasisPoint(_value, basis_point)
 
             _wallet.delegation_value[i] += additional_delegation
             self._delegation[_wallet.delegation_address[i]] += additional_delegation
