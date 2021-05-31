@@ -246,7 +246,7 @@ class LinkedListDB:
             self._tail_id.set(cur_id)
         else:
             # Prepend to head
-            head = self._get_head_node()
+            head = self.get_head_node()
             head.set_prev(cur_id)
             cur.set_next(self._head_id.get())
             # Update head to cur node
