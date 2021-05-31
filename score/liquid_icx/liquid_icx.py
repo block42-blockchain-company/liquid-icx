@@ -207,7 +207,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self.msg.sender != self.owner:
             revert("LiquidICX: Only owner function at current state.")
         if _value <= 0:
-            revert("LiquidICX: 'iteration limit' has to be > 0.")
+            revert("LiquidICX: 'min value to get rewards' has to be > 0.")
 
         self._min_value_to_get_rewards.set(_value)
 
