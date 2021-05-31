@@ -169,7 +169,7 @@ class Wallet:
             basis_point = Utils.calcBPS(self._delegation_value[i], _balance)
             delegation_value = Utils.calcValueProportionalToBasisPoint(_reward, basis_point)
             self._delegation_value[i] += delegation_value
-            _delegations[Address.from_string(self._delegation_address[i])] += delegation_value
+            _delegations[self._delegation_address[i]] += delegation_value
 
     def has_voting_power(self) -> bool:
         return len(self.delegation_address) > 0
