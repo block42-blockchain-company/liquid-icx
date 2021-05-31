@@ -534,7 +534,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
             self._current_distribute_linked_list_id.set(
                 self._wallets.get_head_node().id)  # get head id for start iteration
 
-    def _distribute_one_wallet(self, _linked_list_id) -> None:
+    def _distribute_one_wallet(self, _linked_list_id: int) -> None:
         """
         Perform the distribution steps for the wallet with the ID of _linked_list_id.
         First reward calculation is done.
