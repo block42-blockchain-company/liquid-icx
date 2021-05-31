@@ -153,7 +153,7 @@ class Wallet:
     def subtract_delegations_proportionally_to_wallet(self, _licx: IconScoreBase, _amount: int):
         for i in range(len(self._delegation_address)):
             basis_point = Utils.calcBPS(self.delegation_value[i], _licx._balances[self._address])
-            subtract = int((_amount * basis_point) / 10000)
+            subtract = Utils.calcValueProportionalToBasisPoint(_amount, basis_point)
 
             self.delegation_value[i] -= subtract
             _licx._delegation[self.delegation_address[i]] -= subtract
@@ -167,7 +167,7 @@ class Wallet:
     def calc_distribute_delegations(self, _reward: int, _balance: int, _delegations: DictDB):
         for i in range(len(self._delegation_address)):
             basis_point = Utils.calcBPS(self._delegation_value[i], _balance)
-            delegation_value = int((_reward * basis_point) / 10000)
+            delegation_value = Utils.calcValueProportionalToBasisPoint(_reward, basis_point)
             self._delegation_value[i] += delegation_value
             _delegations[Address.from_string(self._delegation_address[i])] += delegation_value
 
