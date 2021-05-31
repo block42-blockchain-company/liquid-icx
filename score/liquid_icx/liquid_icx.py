@@ -507,14 +507,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         """
 
         delegations = []
-        stake_sum = 0
 
         for address in self._delegation_keys:
             delegations.append({
                 "address": address,
                 "value": self._delegation[address]
             })
-            stake_sum += self._delegation[address]
 
         self._system_score.setDelegation(delegations)
 
