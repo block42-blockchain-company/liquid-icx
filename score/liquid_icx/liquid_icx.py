@@ -125,9 +125,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         return Wallet(self.db, _address).serialize()
 
     @external(readonly=True)
-    def getWallets(self) -> list:
+    def getWallets(self, offset: int = 0) -> list:
         result = []
-        for item in self._wallets:
+        for item in self._wallets.select(offset):
             result.append(item[1])
         return result
 
