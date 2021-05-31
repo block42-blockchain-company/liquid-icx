@@ -569,10 +569,9 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         try:
             # delete from wallets linked list
-            if not len(wallet.join_values) \
-                    and self._balances[address] < self._min_value_to_get_rewards.get():
+            if not len(wallet.join_values):
                 next_id = self._wallets.next(_linked_list_id)
-                self._wallets.remove(wallet.node_id)
+                self._remove_wallet_if_not_enough_funds(wallet)
             else:
                 next_id = self._wallets.next(_linked_list_id)
         except StopIteration:
