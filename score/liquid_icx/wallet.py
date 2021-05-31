@@ -19,10 +19,10 @@ class Wallet:
         self._unstake_heights = ArrayDB("unstake_heights_" + str(_address), db, value_type=int)
 
         # Wallet ID in linked list
-        self._node_id = VarDB("wallet_id_" + str(_address), db, value_type=int)
+        self._node_id = VarDB("node_id_" + str(_address), db, value_type=int)
 
         # Tracking individual wallet's delegations
-        self._delegation_address = ArrayDB("delegation_addr_" + str(_address), db, value_type=Address)
+        self._delegation_address = ArrayDB("delegation_address_" + str(_address), db, value_type=Address)
         self._delegation_value = ArrayDB("delegation_value_" + str(_address), db, value_type=int)
 
     def join(self, _join_amount: int, _delegation: dict, _licx: IconScoreBase):
