@@ -445,10 +445,11 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         current_linked_list_id = self._current_distribute_linked_list_id.get()
         i = 0
         # current_linked_list_id becomes negative when we reached the end of the linked list
-        while i < self._iteration_limit.get() and current_linked_list_id >= 0:
+        for i in range(self._iteration_limit.get()):
             self._distribute_one_wallet(current_linked_list_id)
             current_linked_list_id = self._get_next_linked_list_id(current_linked_list_id)
-            i += 1
+            if current_linked_list_id < 0:
+                break
 
         if current_linked_list_id >= 0:
             self._current_distribute_linked_list_id.set(current_linked_list_id)
