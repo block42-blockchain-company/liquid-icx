@@ -443,7 +443,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         self._distribution_setup()
 
         current_linked_list_id = self._current_distribute_linked_list_id.get()
-        i = 0
+
         # current_linked_list_id becomes negative when we reached the end of the linked list
         for i in range(self._iteration_limit.get()):
             self._distribute_one_wallet(current_linked_list_id)
@@ -461,7 +461,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
     #  Helper methods
     # ================================================
 
-    def _claim_rewards(self):
+    def _claim_rewards(self) -> None:
         """
         Claim IScore rewards. It is called only once per term, at the start of the cycle.
         """

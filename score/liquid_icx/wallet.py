@@ -51,7 +51,7 @@ class Wallet:
         if delegation_amount_sum != _join_amount:
             revert("LiquidICX: Delegations values do not match to the amount of ICX sent.")
 
-    def request_leave(self, _leave_amount: int):
+    def request_leave(self, _leave_amount: int) -> None:
         """
         Adds a leave amount to the wallet's leave queue.
         :param _leave_amount: Amount of LICX for a leave request
