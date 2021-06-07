@@ -39,6 +39,17 @@ class Utils:
         return int((value * basis_point) / 10000)
 
     @staticmethod
+    def calcDelegation(voting_amount: int, delegated: int, total_delegated: int) -> int:
+        """
+        Calculating the delegation amount proportional to the total delegated
+        :param voting_amount:
+        :param delegated:
+        :param total_delegated:
+        :return:
+        """
+        return int(voting_amount * delegated / total_delegated)
+
+    @staticmethod
     def isPrep(db: IconScoreDatabase, address: Address) -> bool:
         """
         Checks if the given address is either a sub or main prep.

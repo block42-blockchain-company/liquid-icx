@@ -237,7 +237,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if self._cap.get() <= self.getStaked() + self.msg.value:
             revert("LiquidICX: Currently impossible to join the pool")
 
-        self._join(self.msg.sender, self.msg.value, json_loads(_delegation))
+        self._join(self.msg.sender, self.msg.value, json_loads(_delegation) if _delegation else None)
 
     @whenNotPaused
     @external
@@ -358,14 +358,12 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         if _value < self._min_value_to_get_rewards.get():
             revert(f"LiquidICX: Leaving value cannot be less than {self._min_value_to_get_rewards.get()}.")
-        if self._balances[_sender] < _value:
-            revert("LiquidICX: Out of balance.")
 
         wallet = Wallet(self.db, _sender)
         if self._balances[_sender] < (sum(wallet.leave_values) + _value):
             revert("LiquidICX: Out of balance.")
-        wallet.request_leave(_value)
 
+        wallet.request_leave(_value)
         self.LeaveRequest(_sender, _value)
 
     def _change_delegation(self, _sender: Address, _delegations: dict) -> None:
@@ -444,16 +442,17 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         current_linked_list_id = self._current_distribute_linked_list_id.get()
 
-        # current_linked_list_id becomes negative when we reached the end of the linked list
-        for i in range(self._iteration_limit.get()):
-            self._distribute_one_wallet(current_linked_list_id)
-            current_linked_list_id = self._get_next_linked_list_id(current_linked_list_id)
-            if current_linked_list_id < 0:
-                break
+        try:
+            # current_linked_list_id becomes negative when we reached the end of the linked list
+            for _ in range(self._iteration_limit.get()):
+                self._distribute_one_wallet(current_linked_list_id)
+                current_linked_list_id = self._get_next_linked_list_id(current_linked_list_id)
+                if current_linked_list_id < 0:
+                    break
 
-        if current_linked_list_id >= 0:
             self._current_distribute_linked_list_id.set(current_linked_list_id)
-        else:
+
+        except StopIteration:
             self._redelegate()
             self._end_distribution()
 
@@ -567,15 +566,13 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         address = Address.from_string(self._wallets.node_value(_linked_list_id))
         wallet = Wallet(self.db, address)
 
-        try:
-            # delete from wallets linked list
-            if not len(wallet.join_values):
-                next_id = self._wallets.next(_linked_list_id)
-                self._remove_wallet_if_not_enough_funds(wallet)
-            else:
-                next_id = self._wallets.next(_linked_list_id)
-        except StopIteration:
-            return -1
+        # delete from wallets linked list
+        if not len(wallet.join_values):
+            next_id = self._wallets.next(_linked_list_id)
+            self._remove_wallet_if_not_enough_funds(wallet)
+        else:
+            next_id = self._wallets.next(_linked_list_id)
+
         return next_id
 
     def _remove_delegations(self, _wallet: Wallet) -> int:
@@ -595,7 +592,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
 
         return sum_undelegated
 
-    def _add_absolute_delegations(self, _wallet: Wallet, _delegations: dict) -> None:
+    def _add_absolute_delegations(self, _wallet: Wallet, _delegations: dict) -> int:
         """
         Add delegations to a wallet
         Return the sum all added delegations
@@ -646,8 +643,7 @@ class LiquidICX(IconScoreBase, IRC2TokenStandard):
         if len(self._delegation_keys) != 0:
             score_delegations = self.getDelegation()
             for it in score_delegations["delegations"]:
-                basis_point = Utils.calcBPS(it["value"], score_delegations["totalDelegated"])
-                delegation_value = Utils.calcValueProportionalToBasisPoint(_total_voting_amount, basis_point)
+                delegation_value = Utils.calcDelegation(_total_voting_amount, it["value"], score_delegations["totalDelegated"])
                 proportional_delegations[str(it["address"])] = delegation_value
         else:
             proportional_delegations[str(PREP_ADDRESS)] = _total_voting_amount
